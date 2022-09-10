@@ -71,7 +71,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
     MIR_reg_t no_reg = 0;
     int disp_p = FALSE;
 
-    fprintf (f, "read");
+    fprintf (f, "mir_read_");
     out_type (f, op.u.mem.type);
     fprintf (f, "(");
     out_op_mem_address(ctx, f, op);
@@ -150,7 +150,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
 
 static void out_op2 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
   if (ops[0].mode == MIR_OP_MEM) {
-    fprintf (f, "write");
+    fprintf (f, "mir_write_");
     out_type (f, ops[0].u.mem.type);
     fprintf (f, "(");
     out_op_mem_address(ctx, f, ops[0]);
@@ -437,7 +437,7 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_LDBGE: out_bfcmp (ctx, f, ops, ">="); break;
   case MIR_ALLOCA:
     out_op (ctx, f, ops[0]);
-    fprintf (f, " = allocateOnStack(");
+    fprintf (f, " = mir_allocate(");
     out_op (ctx, f, ops[1]);
     fprintf (f, ");\n");
     break;
@@ -495,6 +495,7 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
       break;
   } 
   */
+  /*
   case MIR_RET:
     fprintf (f, "return ");
     if (insn->nops > 1) {
@@ -504,6 +505,7 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     if (insn->nops != 0) out_op (ctx, f, ops[0]);
     fprintf (f, ";\n");
     break;
+  */
   case MIR_LABEL:
     mir_assert (ops[0].mode == MIR_OP_INT);
     fprintf (f, "case \"l%" PRId64 "\":\n", ops[0].u.i);
@@ -516,7 +518,16 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   MIR_var_t var;
   size_t i, nlocals;
 
-  if (item->item_type == MIR_export_item) return;
+  if (item->item_type == MIR_export_item) {
+	/*
+    MIR_item_t exported_item = item->ref_def;
+    if (exported_item->item_type == MIR_data_item) {
+      out_type(f, exported_item->u.data->el_type);
+      fprintf(f, " %s = %d;\n", exported_item->u.data->name, exported_item->u.data->u.els[0]);
+    }
+    */
+    return;
+  }
   if (item->item_type == MIR_import_item) {
     //fprintf (f, "extern char %s[];\n", item->u.import_id);
     return;
@@ -546,6 +557,13 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     if (i == 0) fprintf (f, "void");
     fprintf (f, ");\n");
     */
+    return;
+  }
+  if (item->item_type == MIR_data_item) {
+    fprintf(f, "static long %s = mir_allocate_", item->u.data->name);
+    out_type(f, item->u.data->el_type);
+    fprintf(f, "(%d);\n", item->u.data->u.els[0]);
+    //fprintf(f, " %s = %d;\n", item->u.data->name, item->u.data->u.els[0]);
     return;
   }
   if (!item->export_p) {
