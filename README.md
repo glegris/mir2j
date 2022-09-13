@@ -1,13 +1,42 @@
-<p>
-<a href="https://github.com/vnmakarov/mir/actions?query=workflow%3AAMD64%2DLinux%2DOSX%2DWindows%2Dtest"><img alt="GitHub MIR test status" src="https://github.com/vnmakarov/mir/workflows/AMD64%2DLinux%2DOSX%2DWindows%2Dtest/badge.svg"></a>
-<a href="https://github.com/vnmakarov/mir/actions?query=workflow%3Aaarch64%2Dtest"><img alt="GitHub MIR test status on aarch64" src="https://github.com/vnmakarov/mir/workflows/aarch64%2Dtest/badge.svg"></a>
-<a href="https://github.com/vnmakarov/mir/actions?query=workflow%3Appc64le%2Dtest"><img alt="GitHub MIR test status on ppc64le" src="https://github.com/vnmakarov/mir/workflows/ppc64le%2Dtest/badge.svg"></a>
-<a href="https://github.com/vnmakarov/mir/actions?query=workflow%3As390x%2Dtest"><img alt="GitHub MIR test status on s390x" src="https://github.com/vnmakarov/mir/workflows/s390x%2Dtest/badge.svg"></a>
-<a href="https://github.com/vnmakarov/mir/actions?query=workflow%3Ariscv64%2Dtest"><img alt="GitHub MIR test status on riscv64" src="https://github.com/vnmakarov/mir/workflows/riscv64%2Dtest/badge.svg"></a>
-<a href="https://github.com/vnmakarov/mir/actions?query=workflow%3AAMD64%2DLinux%2Dbench"><img alt="GitHub MIR benchmark status" src="https://github.com/vnmakarov/mir/workflows/AMD64%2DLinux%2Dbench/badge.svg"></a>
-</p>
+# MIR2j Project
 
-# MIR Project
+The goal of this project is to make C applications/libraries or code that can be compiled with LLVM work in a JVM. There are already projects that do this:
+- [NestedVM ](http://nestedvm.ibex.org/) or [Cibyl](https://github.com/SimonKagstrom/cibyl)
+- [LLJVM-translator](https://github.com/maropu/lljvm-translator) (based on [LLJVM ](https://github.com/davidar/lljvm) by David Roberts)
+
+It should be possible to do the same thing with MIR but with a much smaller footprint.
+
+At first, I thought it wasn't a good idea (for me) to start generating bytecodes because I needed to understand how MIR works and experiment with trial and error (and also because I haven't found a good bytecode manipulation library in pure c). So I decided to generate Java sources for now. Another advantage is that we could also easily generate sources for languages close to Java syntax like C# or Dart.
+
+```
+LLVM IR / C => MIR => Java Sources
+```
+
+Because there is no goto instruction at source level, the program flow is based on a loop with switch/case statements.
+
+```
+public void doSomething() {
+  while(true) {
+    switch(label) {
+    case "L1":
+     ....
+    case "L2":
+      label = "L1"; // goto L1;
+      break;
+    }
+  }
+}  
+```
+
+Switching on strings is not good for performance. To use integers instead of strings, I'll create an unique integer for each label string (currently "L1", "L2", ... with c2mir) 
+
+Memory is a giant byte array (byte[]) with this structure: DATA | STACK | HEAP. It seems to me than putting the heap at the end helps to minimize memory footprint when a program is not allocating on the heap.
+
+The C Standard library will be implemented in two places : a Runtime class (only printf and alloca yet) and a single C file for the other common functions which don't require an interaction with the subsystem (like string manipulations)
+
+Currently the code is in its early stages, but the sieve.c example can already be converted and works fine.
+
+# Original description of the MIR Project
   * MIR means **M**edium **I**nternal **R**epresentation
   * MIR project goal is to provide a basis to implement fast and lightweight interpreters and JITs
   * Plans to try MIR light-weight JIT first for CRuby or/and MRuby implementation
