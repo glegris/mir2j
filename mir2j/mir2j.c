@@ -17,7 +17,7 @@ static void out_type (FILE *f, MIR_type_t t) {
   case MIR_T_I32: fprintf (f, "int"); break; // int32_t
   case MIR_T_U32: fprintf (f, "uint32_t"); break;
   case MIR_T_I64: fprintf (f, "long"); break; // int64_t
-  case MIR_T_U64: fprintf (f, "uint64_t"); break;
+  case MIR_T_U64: fprintf (f, "long"); break; // uint64_t FIXME ?
   case MIR_T_F: fprintf (f, "float"); break;
   case MIR_T_D: fprintf (f, "double"); break;
   case MIR_T_LD: fprintf (f, "double"); break; // long double
@@ -54,8 +54,17 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
   case MIR_OP_LDOUBLE: fprintf (f, "%#.*lgl", LDBL_MANT_DIG, op.u.d); break;
   case MIR_OP_REF: fprintf (f, "%s", MIR_item_name (ctx, op.u.ref)); break;
   case MIR_OP_STR: {
+    fprintf (f, "mir_get_string_ptr(\"");
+    for (int i = 0; i < op.u.str.len - 1; i++) {
+      if (op.u.str.s[i] == '\n') {
+          fprintf (f, "\\n");		
+      } else {
+          fprintf (f, "%c", op.u.str.s[i]);		
+      } 
+    }
+    fprintf (f, "\")");
     //fprintf (f, "\"%s\"", op.u.str.s); 
-    int i = 0;
+    /*
     fprintf (f, "\"");
     for (int i = 0; i < op.u.str.len - 1; i++) {
       if (op.u.str.s[i] == '\n') {
@@ -65,6 +74,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
       } 
     }
     fprintf (f, "\"");
+    */
     break;
   }
   case MIR_OP_MEM: {
@@ -175,6 +185,16 @@ static void out_op3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str)
   fprintf (f, ";\n");
 }
 
+static void out_op3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
+  out_op (ctx, f, ops[0]);
+  fprintf (f, " = ((long) "); // int64_t
+  out_op (ctx, f, ops[1]);
+  fprintf (f, " %s (long) ", str); // int64_t
+  out_op (ctx, f, ops[2]);
+  fprintf (f, ") ? 1 : 0;\n");  
+}
+
+
 static void out_uop3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
   out_op (ctx, f, ops[0]);
   fprintf (f, " = (uint64_t) ");
@@ -191,6 +211,15 @@ static void out_sop3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str
   fprintf (f, " %s (int) ", str); // int32_t
   out_op (ctx, f, ops[2]);
   fprintf (f, ";\n");
+}
+
+static void out_sop3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
+  out_op (ctx, f, ops[0]);
+  fprintf (f, " = ((int) "); // int32_t
+  out_op (ctx, f, ops[1]);
+  fprintf (f, " %s (int) ", str); // int32_t
+  out_op (ctx, f, ops[2]);
+  fprintf (f, ") ? 1 : 0;\n");
 }
 
 static void out_usop3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
@@ -340,18 +369,18 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_LSHS: out_sop3 (ctx, f, ops, "<<"); break;
   case MIR_RSHS: out_sop3 (ctx, f, ops, ">>"); break;
   case MIR_URSHS: out_usop3 (ctx, f, ops, ">>"); break;
-  case MIR_EQ: out_op3 (ctx, f, ops, "=="); break;
-  case MIR_NE: out_op3 (ctx, f, ops, "!="); break;
-  case MIR_LT: out_op3 (ctx, f, ops, "<"); break;
-  case MIR_LE: out_op3 (ctx, f, ops, "<="); break;
-  case MIR_GT: out_op3 (ctx, f, ops, ">"); break;
-  case MIR_GE: out_op3 (ctx, f, ops, ">="); break;
-  case MIR_EQS: out_sop3 (ctx, f, ops, "=="); break;
-  case MIR_NES: out_sop3 (ctx, f, ops, "!="); break;
-  case MIR_LTS: out_sop3 (ctx, f, ops, "<"); break;
-  case MIR_LES: out_sop3 (ctx, f, ops, "<="); break;
-  case MIR_GTS: out_sop3 (ctx, f, ops, ">"); break;
-  case MIR_GES: out_sop3 (ctx, f, ops, ">="); break;
+  case MIR_EQ: out_op3_logic (ctx, f, ops, "=="); break;
+  case MIR_NE: out_op3_logic (ctx, f, ops, "!="); break;
+  case MIR_LT: out_op3_logic (ctx, f, ops, "<"); break;
+  case MIR_LE: out_op3_logic (ctx, f, ops, "<="); break;
+  case MIR_GT: out_op3_logic (ctx, f, ops, ">"); break;
+  case MIR_GE: out_op3_logic (ctx, f, ops, ">="); break;
+  case MIR_EQS: out_sop3_logic (ctx, f, ops, "=="); break;
+  case MIR_NES: out_sop3_logic (ctx, f, ops, "!="); break;
+  case MIR_LTS: out_sop3_logic (ctx, f, ops, "<"); break;
+  case MIR_LES: out_sop3_logic (ctx, f, ops, "<="); break;
+  case MIR_GTS: out_sop3_logic (ctx, f, ops, ">"); break;
+  case MIR_GES: out_sop3_logic (ctx, f, ops, ">="); break;
   case MIR_ULT: out_uop3 (ctx, f, ops, "<"); break;
   case MIR_ULE: out_uop3 (ctx, f, ops, "<="); break;
   case MIR_UGT: out_uop3 (ctx, f, ops, ">"); break;
@@ -463,9 +492,27 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     for (size_t i = start; i < insn->nops; i++) {
       if (i != start) fprintf (f, ", ");
 	  //printf("op %i\n", i);
+	  if (!proto->vararg_p) {	
+	    MIR_var_t var = VARR_GET (MIR_var_t, proto->args, i - start);
+        //if (var.type < MIR_T_BOUND) {
+	    fprintf (f, "(");
+        out_type (f, var.type);
+	    fprintf (f, ") ");
+        //}
+      }
       out_op (ctx, f, ops[i]);
     }
     fprintf (f, ");\n");
+
+    /*
+    for (i = 0; i < VARR_LENGTH (MIR_var_t, proto->args); i++) {
+      var = VARR_GET (MIR_var_t, proto->args, i);
+      if (i != 0) fprintf (f, ", ");
+      out_type (f, var.type);
+      if (var.name != NULL) fprintf (f, " %s", var.name);
+    }
+    */
+    
     break;
   }
   /*
