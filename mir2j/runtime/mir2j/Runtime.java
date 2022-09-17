@@ -127,33 +127,32 @@ public class Runtime {
 		return i;
 	}
 
-	public static void mir_write_long(long longAddr, long v) {
+	public static void mir_write_long(long longAddr, long l) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		int addr = (int) longAddr;
-		int i = (int) v;
-		memory[addr] = (byte) ((i >> 56) & 0xFF);
-		memory[addr + 1] = (byte) ((i >> 48) & 0xFF);
-		memory[addr + 2] = (byte) ((i >> 40) & 0xFF);
-		memory[addr + 3] = (byte) ((i >> 32) & 0xFF);
-		memory[addr + 4] = (byte) ((i >> 24) & 0xFF);
-		memory[addr + 5] = (byte) ((i >> 16) & 0xFF);
-		memory[addr + 6] = (byte) ((i >> 8) & 0xFF);
-		memory[addr + 7] = (byte) (i & 0xFF);
+		memory[addr] = (byte) ((l >> 56) & 0xFF);
+		memory[addr + 1] = (byte) ((l >> 48) & 0xFF);
+		memory[addr + 2] = (byte) ((l >> 40) & 0xFF);
+		memory[addr + 3] = (byte) ((l >> 32) & 0xFF);
+		memory[addr + 4] = (byte) ((l >> 24) & 0xFF);
+		memory[addr + 5] = (byte) ((l >> 16) & 0xFF);
+		memory[addr + 6] = (byte) ((l >> 8) & 0xFF);
+		memory[addr + 7] = (byte) (l & 0xFF);
 	}
 
 	public static long mir_read_long(long longAddr) {
 		int addr = (int) longAddr;
-		int b1 = memory[addr];
-		int b2 = memory[addr + 1];
-		int b3 = memory[addr + 2];
-		int b4 = memory[addr + 3];
-		int b5 = memory[addr + 4];
-		int b6 = memory[addr + 5];
-		int b7 = memory[addr + 6];
-		int b8 = memory[addr + 7];
-		int i = ((b1 & 0xFF) << 56) | ((b2 & 0xFF) << 48) | ((b3 & 0xFF) << 40) | ((b4 & 0xFF) << 32) | ((b5 & 0xFF) << 24) | ((b6 & 0xFF) << 16) | ((b7 & 0xFF) << 8) | (b8 & 0xFF);
+		long b1 = ((long) (memory[addr] & 0xFF)) << 56 ;
+		long b2 = ((long) (memory[addr + 1] & 0xFF)) << 48 ;
+		long b3 = ((long) (memory[addr + 2] & 0xFF)) << 40 ;
+		long b4 = ((long) (memory[addr + 3] & 0xFF)) << 32 ;
+		long b5 = ((long) (memory[addr + 4] & 0xFF)) << 24 ;
+		long b6 = ((long) (memory[addr + 5] & 0xFF)) << 16 ;
+		long b7 = ((long) (memory[addr + 6] & 0xFF)) << 8 ;
+		long b8 = ((long) (memory[addr + 7] & 0xFF));
+		long l = b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8;
 		//System.out.println("readbyte(" + addr + "): " + b);
-		return i;
+		return l;
 	}
 
 	public static long mir_allocate_byte(long v) {
@@ -207,6 +206,11 @@ public class Runtime {
 		}
 		String s = new String(bytes);
 		return s;
+	}
+
+	public static long memcpy(long destAddr, long srcAddr, long size) {
+		System.arraycopy(memory, (int) srcAddr, memory, (int) destAddr, (int) size);
+		return destAddr;
 	}
 
 	public static int printf(String string, Object... args) {

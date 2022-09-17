@@ -11,17 +11,23 @@ static MIR_func_t curr_func;
 static void out_type (FILE *f, MIR_type_t t) {
   switch (t) {
   case MIR_T_I8: fprintf (f, "byte"); break; // int8_t
-  case MIR_T_U8: fprintf (f, "uint8_t"); break;
+  case MIR_T_U8: fprintf (f, "short"); break; // uint8_t
   case MIR_T_I16: fprintf (f, "short"); break; // int16_t
-  case MIR_T_U16: fprintf (f, "uint16_t"); break;
+  case MIR_T_U16: fprintf (f, "int"); break; // uint16_t
   case MIR_T_I32: fprintf (f, "int"); break; // int32_t
-  case MIR_T_U32: fprintf (f, "uint32_t"); break;
+  case MIR_T_U32: fprintf (f, "long"); break; // uint32_t
   case MIR_T_I64: fprintf (f, "long"); break; // int64_t
   case MIR_T_U64: fprintf (f, "long"); break; // uint64_t FIXME ?
   case MIR_T_F: fprintf (f, "float"); break;
   case MIR_T_D: fprintf (f, "double"); break;
   case MIR_T_LD: fprintf (f, "double"); break; // long double
   case MIR_T_P: fprintf (f, "void *"); break;
+  case MIR_T_BLK:
+  case MIR_T_BLK + 1:
+  case MIR_T_BLK + 2:
+  case MIR_T_BLK + 3:
+  case MIR_T_BLK + 4:
+  case MIR_T_RBLK: fprintf (f, "long"); break;
   default: mir_assert (FALSE);
   }
 }
@@ -78,13 +84,20 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
     break;
   }
   case MIR_OP_MEM: {
-    MIR_reg_t no_reg = 0;
-    int disp_p = FALSE;
+    //MIR_reg_t no_reg = 0;
+    //int disp_p = FALSE;
 
-    fprintf (f, "mir_read_");
-    out_type (f, op.u.mem.type);
-    fprintf (f, "(");
-    out_op_mem_address(ctx, f, op);
+    if (MIR_all_blk_type_p (op.u.mem.type)) {
+    //if ((op.u.mem.type >= MIR_T_BLK) && (op.u.mem.type <= MIR_T_RBLK)) {
+      //out_op_mem_address(ctx, f, op);	
+      fprintf (f, "%s", MIR_reg_name (ctx, op.u.mem.base, curr_func));
+    } else {
+      fprintf (f, "mir_read_");
+      out_type (f, op.u.mem.type);
+      fprintf (f, "(");
+      out_op_mem_address (ctx, f, op);
+      fprintf (f, ")");
+    }
     /*
     if (op.u.mem.disp != 0 || (op.u.mem.base == no_reg && op.u.mem.index == no_reg)) {
        fprintf (f, "%" PRId64, op.u.mem.disp);
@@ -99,8 +112,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
         if (op.u.mem.scale != 1) fprintf (f, " * %u", op.u.mem.scale);
       }
     }*/
-    
-    fprintf (f, ")");
+  
     break;
 
     
@@ -224,12 +236,22 @@ static void out_sop3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const cha
 
 static void out_usop3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
   out_op (ctx, f, ops[0]);
-  fprintf (f, " = (uint32_t) ");
+  fprintf (f, " = (long) "); // uint32_t
   out_op (ctx, f, ops[1]);
-  fprintf (f, " %s (uint32_t) ", str);
+  fprintf (f, " %s (long) ", str); // uint32_t
   out_op (ctx, f, ops[2]);
   fprintf (f, ";\n");
 }
+
+static void out_usop3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
+  out_op (ctx, f, ops[0]);
+  fprintf (f, " = ((long) "); // int64_t
+  out_op (ctx, f, ops[1]);
+  fprintf (f, " %s (long) ", str); // int64_t
+  out_op (ctx, f, ops[2]);
+  fprintf (f, ") ? 1 : 0;\n");  
+}
+
 
 static void out_jmp (MIR_context_t ctx, FILE *f, MIR_op_t label_op) {
   mir_assert (label_op.mode == MIR_OP_LABEL);
@@ -308,9 +330,9 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_EXT8: out_op2 (ctx, f, ops, "(long) (byte)"); break; // (int64_t) (int8_t) 
   case MIR_EXT16: out_op2 (ctx, f, ops, "(long) (short)"); break; // (int64_t) (int16_t) 
   case MIR_EXT32: out_op2 (ctx, f, ops, "(long) (int)"); break; // (int64_t) (int32_t)
-  case MIR_UEXT8: out_op2 (ctx, f, ops, "(int64_t) (uint8_t)"); break;
-  case MIR_UEXT16: out_op2 (ctx, f, ops, "(int64_t) (uint16_t)"); break;
-  case MIR_UEXT32: out_op2 (ctx, f, ops, "(int64_t) (uint32_t)"); break;
+  case MIR_UEXT8: out_op2 (ctx, f, ops, "(long) (short)"); break; // (int64_t) (uint8_t)
+  case MIR_UEXT16: out_op2 (ctx, f, ops, "(long) (int)"); break; // (int64_t) (uint16_t)
+  case MIR_UEXT32: out_op2 (ctx, f, ops, "(long)"); break; // (int64_t) (uint32_t)
   case MIR_F2I:
   case MIR_D2I:
   case MIR_LD2I: out_op2 (ctx, f, ops, "(long)"); break; // int64_t 
@@ -385,10 +407,10 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_ULE: out_uop3 (ctx, f, ops, "<="); break;
   case MIR_UGT: out_uop3 (ctx, f, ops, ">"); break;
   case MIR_UGE: out_uop3 (ctx, f, ops, ">"); break;
-  case MIR_ULTS: out_usop3 (ctx, f, ops, "<"); break;
-  case MIR_ULES: out_usop3 (ctx, f, ops, "<="); break;
-  case MIR_UGTS: out_usop3 (ctx, f, ops, ">"); break;
-  case MIR_UGES: out_usop3 (ctx, f, ops, ">="); break;
+  case MIR_ULTS: out_usop3_logic (ctx, f, ops, "<"); break;
+  case MIR_ULES: out_usop3_logic (ctx, f, ops, "<="); break;
+  case MIR_UGTS: out_usop3_logic (ctx, f, ops, ">"); break;
+  case MIR_UGES: out_usop3_logic (ctx, f, ops, ">="); break;
   case MIR_FEQ:
   case MIR_DEQ:
   case MIR_LDEQ: out_fop3 (ctx, f, ops, "=="); break;
@@ -609,8 +631,23 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   if (item->item_type == MIR_data_item) {
     fprintf(f, "static long %s = mir_allocate_", item->u.data->name);
     out_type(f, item->u.data->el_type);
-    fprintf(f, "(%d);\n", item->u.data->u.els[0]);
+    if (item->u.data->nel == 1) {
+      fprintf(f, "(%d);\n", item->u.data->u.els[0]);
+    } else {
+      fprintf(f, "s(new ");
+      out_type(f, item->u.data->el_type);
+      fprintf(f, "[] { ");
+      for (int i = 0; i < item->u.data->nel; i++) {
+        if (i != 0) fprintf (f, ", ");
+        fprintf(f, "%d", item->u.data->u.els[i]);	
+      } 
+      fprintf(f, " });\n");
+    }
     //fprintf(f, " %s = %d;\n", item->u.data->name, item->u.data->u.els[0]);
+    return;
+  }
+  if (item->item_type == MIR_bss_item) {
+    fprintf(f, "static long %s = mir_allocate(%d);\n", item->u.bss->name, item->u.bss->len);
     return;
   }
   if (!item->export_p) {
@@ -731,6 +768,7 @@ int main (int argc, const char *argv[]) {
     fprintf (stderr, "usage: %s < file or %s mir-file\n", argv[0], argv[0]);
     exit (1);
   }
+  
   VARR_CREATE (char, input, 0);
   while ((c = getc (f)) != EOF) VARR_PUSH (char, input, c);
   VARR_PUSH (char, input, 0);
@@ -740,6 +778,8 @@ int main (int argc, const char *argv[]) {
   }
   fclose (f);
   MIR_scan_string (ctx, VARR_ADDR (char, input));
+  
+  //MIR_read (ctx, f);
   m = DLIST_TAIL (MIR_module_t, *MIR_get_module_list (ctx));
   MIR_module2j (ctx, stdout, m);
   MIR_finish (ctx);
