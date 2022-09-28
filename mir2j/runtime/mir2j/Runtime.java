@@ -3,8 +3,8 @@ package mir2j;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.TreeMap;
-import java.util.Vector;
 
 public class Runtime {
 
@@ -15,12 +15,13 @@ public class Runtime {
 	private static int maxStackSize = 1000000;
 	private static int functionSpaceStartAddress = maxStackSize;
 	private static int functionSpaceSize = 1000;
+	private static int nextfunctionPointer = functionSpaceStartAddress;
 	private static int heapStartAddress = functionSpaceStartAddress + functionSpaceSize;
 	private static TreeMap<Integer, MemoryBlock> blocks = new TreeMap<>();
 	private static HashMap<String, Integer> stringMap = new HashMap<>();
-	private static Vector<Method> functionPointerList = new Vector<>();
-	private static Class parentClass; 
-	
+	private static FunctionMap functionMap = new FunctionMap();
+	private static Class parentClass;
+
 	protected Runtime(Class parentClazz) {
 		parentClass = parentClazz;
 	}
@@ -293,20 +294,13 @@ public class Runtime {
 		String s = new String(bytes);
 		return s;
 	}
-	
+
 	public static long mir_get_function_ptr(String functionName) {
+		int functionAddress = 0;
 		// Check if we have already registered the given function
-		int index = -1;
-		int listSize = functionPointerList.size();
-		for (int i = 0; i < listSize; i++) {
-			Method method = functionPointerList.get(i);
-			if (method.getName().equals(functionName)) {
-				index = i;
-				break;
-			}
-		}
+		MethodHandle methodHandle = functionMap.getMethodHandleByName(functionName);
 		// If unknown, link then register the function
-		if (index == -1) {
+		if (methodHandle == null) {
 			Method[] methods = parentClass.getDeclaredMethods();
 			int targetMethodIndex = -1;
 			for (int i = 0; i < methods.length; i++) {
@@ -318,28 +312,32 @@ public class Runtime {
 			if (targetMethodIndex == -1) {
 				throw new RuntimeException("Function '" + functionName + "' was not found.");
 			}
-			functionPointerList.add(methods[targetMethodIndex]);
-			index = functionPointerList.size() - 1;
+			if (nextfunctionPointer > functionSpaceStartAddress + functionSpaceSize) {
+				throw new RuntimeException("Can't allocate more function pointer");
+			}
+			functionAddress = nextfunctionPointer;
+			methodHandle = new MethodHandle(functionAddress, methods[targetMethodIndex]);
+			functionMap.put(functionName, methodHandle);
+			nextfunctionPointer++;
 		}
-		int addr = functionSpaceStartAddress + index;
-		return addr;
+		functionAddress = methodHandle.getAddress();
+		return functionAddress;
 	}
 
 	public static long mir_call_function(long functionAddr, Object... args) {
-		if (functionAddr < functionSpaceStartAddress) {
+		if ((functionAddr < functionSpaceStartAddress) || (functionAddr > functionSpaceStartAddress + functionSpaceSize)) {
 			throw new RuntimeException("Bad function address: " + functionAddr);
 		}
-		int index = (int) functionAddr - functionSpaceStartAddress;
-		Method method = functionPointerList.get(index);
-		if (method == null) {
+		MethodHandle methodHandle = functionMap.getMethodByAddress((int)functionAddr);
+		if (methodHandle == null) {
 			throw new RuntimeException("Function at addr=" + functionAddr + " is not mapped.");
 		}
 		try {
-			Object result = method.invoke(null, args);
+			Object result = methodHandle.getMethod().invoke(null, args);
 			//System.out.println("result=" + result);
 			return ((Number) result).longValue();
 		} catch (Exception e) {
-			throw new RuntimeException("Error while calling function '" + method.getName() + "' (addr=" + functionAddr + ")", e);
+			throw new RuntimeException("Error while calling function '" + methodHandle.getMethod().getName() + "' (addr=" + functionAddr + ")", e);
 		}
 	}
 
@@ -404,6 +402,51 @@ public class Runtime {
 //		byte b = (byte) ((i >> (addr % 4)) & 0xFF);
 //		return b;
 //	}
+
+}
+
+class FunctionMap {
+
+	private Map<Object, MethodHandle> map = new HashMap<Object, MethodHandle>();
+
+	public void put(String functionName, MethodHandle methodHandle) {
+		map.put(functionName, methodHandle);
+		map.put(methodHandle.getAddress(), methodHandle);
+	}
+	
+	public MethodHandle getMethodHandleByName(String functionName) {
+		return map.get(functionName);
+	}
+	
+	public MethodHandle getMethodByAddress(int address) {
+		return map.get(address);
+	}
+
+}
+
+class MethodHandle {
+	
+	private int address;
+	private Method method;
+	
+	public MethodHandle(int address, Method method) {
+		this.address = address;
+		this.method = method;
+	}
+
+	/**
+	 * @return the address
+	 */
+	public int getAddress() {
+		return address;
+	}
+
+	/**
+	 * @return the method
+	 */
+	public Method getMethod() {
+		return method;
+	}
 
 }
 
