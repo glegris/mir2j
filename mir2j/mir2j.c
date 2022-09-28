@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 static MIR_func_t curr_func;
+static char in_ref_data_seq = 0;
 
 static void out_type (FILE *f, MIR_type_t t) {
   switch (t) {
@@ -53,7 +54,7 @@ static void out_op_mem_address(MIR_context_t ctx, FILE *f, MIR_op_t op) {
 static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
   switch (op.mode) {
   case MIR_OP_REG: fprintf (f, "%s", MIR_reg_name (ctx, op.u.reg, curr_func)); break;
-  case MIR_OP_INT: fprintf (f, "%" PRId64, op.u.i); break;
+  case MIR_OP_INT: fprintf (f, "%" PRId64 "L", op.u.i); break; // FIXME Try to remove the "L" postfix
   case MIR_OP_UINT: fprintf (f, "%" PRIu64, op.u.u); break;
   case MIR_OP_FLOAT: fprintf (f, "%#.*gf", FLT_MANT_DIG, op.u.f); break;
   case MIR_OP_DOUBLE: fprintf (f, "%#.*g", DBL_MANT_DIG, op.u.d); break;
@@ -171,6 +172,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
 }
 
 static void out_op2 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
+  //printf("out_op2: mode=%d\n", ops[1].mode);
   if (ops[0].mode == MIR_OP_MEM) {
     fprintf (f, "mir_write_");
     out_type (f, ops[0].u.mem.type);
@@ -183,7 +185,13 @@ static void out_op2 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str)
     out_op (ctx, f, ops[0]);
     fprintf (f, " = ");
     if (str != NULL) fprintf (f, "%s ", str);
-    out_op (ctx, f, ops[1]);
+    if (ops[1].mode == MIR_OP_REF && ops[1].u.ref->item_type == MIR_func_item) {
+      fprintf (f, "mir_get_function_ptr(\"");
+      out_op (ctx, f, ops[1]);
+      fprintf (f, "\")");
+    } else {
+      out_op (ctx, f, ops[1]);
+    }
     fprintf (f, ";\n");
   }
 }
@@ -209,9 +217,9 @@ static void out_op3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char
 
 static void out_uop3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
   out_op (ctx, f, ops[0]);
-  fprintf (f, " = (uint64_t) ");
+  fprintf (f, " = (long) ");  // uint64_t. FIXME: how to handle unsigned long ?
   out_op (ctx, f, ops[1]);
-  fprintf (f, " %s (uint64_t) ", str);
+  fprintf (f, " %s (long) ", str);
   out_op (ctx, f, ops[2]);
   fprintf (f, ";\n");
 }
@@ -509,8 +517,17 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
       start = 3;
     }
     //fprintf (f, "((%s) ", proto->name);
-    out_op (ctx, f, ops[1]);
-    fprintf (f, "(");
+    //printf(" (CALL: mode=%d) ", ops[1].mode);
+    //int number_of_args = insn->nops - start;
+    if ((ops[1].mode == MIR_OP_REG)) { // && (number_of_args > 0)) {
+      fprintf (f, "mir_call_function(");	
+      out_op (ctx, f, ops[1]);
+      fprintf (f, ", ");
+    } else {
+      out_op (ctx, f, ops[1]);
+      fprintf (f, "(");	
+    }
+    
     for (size_t i = start; i < insn->nops; i++) {
       if (i != start) fprintf (f, ", ");
 	  //printf("op %i\n", i);
@@ -583,6 +600,32 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   }
 }
 
+void stop_ref_data_sequence (MIR_context_t ctx, FILE *f) {
+  if (in_ref_data_seq) {
+    fprintf(f, " });\n");
+    in_ref_data_seq = 0;
+  }
+}
+
+static const char* mangle_name(const char* name) {
+  if (name[0] == '.') {
+    return &name[1];
+  } else {
+  	return name;
+  }
+  
+/*
+  int var_name_length = strlen(item->u.data->name) + 1; 
+  char *var_name = (char *) malloc(var_name_length);
+  strncpy(var_name, item->u.data->name, var_name_length);
+  if (var_name[0] == '.') {
+    var_name[0] = '_';
+  }
+  fprintf(f, "static long %s = mir_allocate_", var_name);
+  free(var_name);
+*/
+}
+
 void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   MIR_var_t var;
   size_t i, nlocals;
@@ -629,27 +672,80 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     return;
   }
   if (item->item_type == MIR_data_item) {
-    fprintf(f, "static long %s = mir_allocate_", item->u.data->name);
-    out_type(f, item->u.data->el_type);
-    if (item->u.data->nel == 1) {
-      fprintf(f, "(%d);\n", item->u.data->u.els[0]);
+    if (item->u.ref_data->name != NULL) {
+      stop_ref_data_sequence(ctx, f);
+
+      const char *var_name = mangle_name(item->u.data->name);
+      fprintf(f, "static long %s = mir_allocate_", var_name);
+      //fprintf(f, "static long %s = mir_allocate_", item->u.data->name);
+      
+      if (item->u.data->el_type == MIR_T_U8) {
+        fprintf(f, "ubyte");
+      } else if (item->u.data->el_type == MIR_T_U16) {
+        fprintf(f, "ushort");
+      } else if (item->u.data->el_type == MIR_T_U32) {
+        fprintf(f, "uint");
+      } else if (item->u.data->el_type == MIR_T_U64) {
+        fprintf(f, "ulong");  
+      } else {
+        out_type(f, item->u.data->el_type);
+      }
+      if (item->u.data->nel == 1) {
+        fprintf(f, "(%d);\n", item->u.data->u.els[0]);
+      } else {
+        fprintf(f, "s(new ");
+        if (item->u.data->el_type == MIR_T_U8) {
+          fprintf(f, "short");
+        } else if (item->u.data->el_type == MIR_T_U16) {
+          fprintf(f, "int");
+        } else if (item->u.data->el_type == MIR_T_U32) {
+          fprintf(f, "long");
+        } else {
+          out_type(f, item->u.data->el_type);
+        }
+        fprintf(f, "[] { ");
+        for (int i = 0; i < item->u.data->nel; i++) {
+          if (i != 0) fprintf (f, ", ");
+          fprintf(f, "%d", item->u.data->u.els[i]);	
+        } 
+        fprintf(f, " });\n");
+      }
     } else {
-      fprintf(f, "s(new ");
-      out_type(f, item->u.data->el_type);
-      fprintf(f, "[] { ");
       for (int i = 0; i < item->u.data->nel; i++) {
-        if (i != 0) fprintf (f, ", ");
-        fprintf(f, "%d", item->u.data->u.els[i]);	
-      } 
-      fprintf(f, " });\n");
+       if (i != 0) fprintf (f, ", ");
+       fprintf(f, "%d", item->u.data->u.els[i]);	
+      }
+      if (in_ref_data_seq)
+        fprintf(f, ", ");
     }
     //fprintf(f, " %s = %d;\n", item->u.data->name, item->u.data->u.els[0]);
     return;
   }
+  if (item->item_type == MIR_ref_data_item) {
+    const char *var_name = mangle_name(item->u.ref_data->ref_item->u.ref_data->name);
+    if (item->u.ref_data->name != NULL) {
+      stop_ref_data_sequence(ctx, f);
+      in_ref_data_seq = 1;
+      fprintf(f, "static long %s = mir_allocate_longs(new long[] { ", item->u.ref_data->name);
+      fprintf(f, "%s + %d, ", var_name, item->u.ref_data->disp);
+    } else {
+      //out_item (ctx, f, item->u.ref_data->ref_item);
+      //fprintf(f, "%s, ", item->u.ref_data->name);	
+      fprintf(f, "%s + %d, ", var_name, item->u.ref_data->disp);	
+    }
+    return;
+  }
+  if (item->item_type == MIR_expr_data_item) {
+      printf("\nError in function %s\n", curr_func->name);
+      (*MIR_get_error_func (ctx)) (MIR_func_error, "Expr data items are not supported yet");
+      return;
+  }
   if (item->item_type == MIR_bss_item) {
+    stop_ref_data_sequence(ctx, f);
     fprintf(f, "static long %s = mir_allocate(%d);\n", item->u.bss->name, item->u.bss->len);
     return;
   }
+  stop_ref_data_sequence(ctx, f);
   if (!item->export_p) {
     fprintf (f, "private "); // static
   } else {
@@ -661,9 +757,11 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     fprintf (f, "void");
   else if (curr_func->nres == 1)
     out_type (f, curr_func->res_types[0]);
-  else
+  else {
+    printf("\nError in function %s\n", curr_func->name);
     (*MIR_get_error_func (ctx)) (MIR_func_error,
                                  "Multiple result functions can not be represented in C");
+  }
   fprintf (f, " %s (", curr_func->name);
   //if (curr_func->nargs == 0) fprintf (f, "void");
   for (i = 0; i < curr_func->nargs; i++) {
@@ -700,7 +798,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
 	if (insn->code == MIR_RET) { // Cast returned type to the function return type  
       fprintf (f, "return ");
       if (insn->nops > 1) {
-        fprintf (stderr, "return with multiple values is not implemented\n");
+        fprintf (stderr, "return with multiple values is not implemented. See function %s\n", curr_func->name);
         exit (1);
       }
       if (insn->nops != 0) { 
@@ -723,6 +821,9 @@ void MIR_module2j (MIR_context_t ctx, FILE *f, MIR_module_t m) {
   //fprintf (f, "#include <stdint.h>\n");
   fprintf(f, "import mir2j.Runtime;\n\n");
   fprintf(f, "public class Main extends Runtime {\n\n");
+  fprintf(f, "public Main() {\n");
+  fprintf(f, "  super(Main.class);\n");
+  fprintf(f, "}\n\n");
   for (MIR_item_t item = DLIST_HEAD (MIR_item_t, m->items); item != NULL;
        item = DLIST_NEXT (MIR_item_t, item))
     out_item (ctx, f, item);
