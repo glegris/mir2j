@@ -676,7 +676,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
       stop_ref_data_sequence(ctx, f);
 
       const char *var_name = mangle_name(item->u.data->name);
-      fprintf(f, "static long %s = mir_allocate_", var_name);
+      fprintf(f, "long %s = mir_allocate_", var_name);
       //fprintf(f, "static long %s = mir_allocate_", item->u.data->name);
       
       if (item->u.data->el_type == MIR_T_U8) {
@@ -726,7 +726,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     if (item->u.ref_data->name != NULL) {
       stop_ref_data_sequence(ctx, f);
       in_ref_data_seq = 1;
-      fprintf(f, "static long %s = mir_allocate_longs(new long[] { ", item->u.ref_data->name);
+      fprintf(f, "long %s = mir_allocate_longs(new long[] { ", item->u.ref_data->name);
       fprintf(f, "%s + %d, ", var_name, item->u.ref_data->disp);
     } else {
       //out_item (ctx, f, item->u.ref_data->ref_item);
@@ -742,7 +742,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   }
   if (item->item_type == MIR_bss_item) {
     stop_ref_data_sequence(ctx, f);
-    fprintf(f, "static long %s = mir_allocate(%d);\n", item->u.bss->name, item->u.bss->len);
+    fprintf(f, "long %s = mir_allocate(%d);\n", item->u.bss->name, item->u.bss->len);
     return;
   }
   stop_ref_data_sequence(ctx, f);
@@ -751,7 +751,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   } else {
   	fprintf (f, "public ");
   }
-  fprintf (f, "static ");
+  //fprintf (f, "static ");
   curr_func = item->u.func;
   if (curr_func->nres == 0)
     fprintf (f, "void");
@@ -818,12 +818,11 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
 }
 
 void MIR_module2j (MIR_context_t ctx, FILE *f, MIR_module_t m) {
-  //fprintf (f, "#include <stdint.h>\n");
   fprintf(f, "import mir2j.Runtime;\n\n");
   fprintf(f, "public class Main extends Runtime {\n\n");
-  fprintf(f, "public Main() {\n");
-  fprintf(f, "  super(Main.class);\n");
-  fprintf(f, "}\n\n");
+  //fprintf(f, "public Main() {\n");
+  //fprintf(f, "  super(Main.class);\n");
+  //fprintf(f, "}\n\n");
   for (MIR_item_t item = DLIST_HEAD (MIR_item_t, m->items); item != NULL;
        item = DLIST_NEXT (MIR_item_t, item))
     out_item (ctx, f, item);

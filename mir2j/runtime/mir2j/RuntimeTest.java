@@ -7,10 +7,6 @@ public class RuntimeTest extends Runtime {
 	public static final int SIEVE_ITERATIONS = 1000;
 //	public static final int SieveSize = 8190;
 //	public static final int Expected = 1027;
-	
-	public RuntimeTest() {
-		super(RuntimeTest.class);
-	}
 
 	public void check(String testName, boolean success) {
 		if (success) {
@@ -48,7 +44,7 @@ public class RuntimeTest extends Runtime {
 		//System.out.println("a=" + a + " b=" + b);
 	}
 
-	public static int sieveWithStringLabels(int _i0_n) {
+	public int sieveWithStringLabels(int _i0_n) {
 		mir_saveStack();
 		long i0_n = _i0_n;
 		long fp = 0;
@@ -170,7 +166,7 @@ public class RuntimeTest extends Runtime {
 		} // End of while
 	} // End of function sieve
 
-	public static int sieveWithIntegerLabels(int _i0_n) {
+	public int sieveWithIntegerLabels(int _i0_n) {
 		mir_saveStack();
 		long i0_n = _i0_n;
 		long fp = 0;
@@ -292,7 +288,7 @@ public class RuntimeTest extends Runtime {
 		} // End of while
 	} // End of function sieve
 	
-	public static int sieveWithIntegerLabelsWithoutLongCast(int _i0_n) {
+	public int sieveWithIntegerLabelsWithoutLongCast(int _i0_n) {
 		mir_saveStack();
 		int i0_n = _i0_n;
 		long fp = 0;
@@ -414,7 +410,7 @@ public class RuntimeTest extends Runtime {
 		} // End of while
 	} // End of function sieve
 	
-	public static int sieveWithIntegerLabelsWithoutLongCastAndLocalMemoryAccess(int _i0_n) {
+	public int sieveWithIntegerLabelsWithoutLongCastAndLocalMemoryAccess(int _i0_n) {
 		mir_saveStack();
 		byte[] memory = new byte[SIEVE_SIZE + 8];
 		int i0_n = _i0_n;

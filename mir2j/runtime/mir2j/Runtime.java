@@ -8,25 +8,20 @@ import java.util.TreeMap;
 
 public class Runtime {
 
-	private static byte[] memory = new byte[5000000];
+	private byte[] memory = new byte[5000000];
 
-	private static int stackPosition = 8; // Do not start at 0 to avoid weird bugs caused by comparisons with 0
-	private static int savedStackPosition;
-	private static int maxStackSize = 1000000;
-	private static int functionSpaceStartAddress = maxStackSize;
-	private static int functionSpaceSize = 1000;
-	private static int nextfunctionPointer = functionSpaceStartAddress;
-	private static int heapStartAddress = functionSpaceStartAddress + functionSpaceSize;
-	private static TreeMap<Integer, MemoryBlock> blocks = new TreeMap<>();
-	private static HashMap<String, Integer> stringMap = new HashMap<>();
-	private static FunctionMap functionMap = new FunctionMap();
-	private static Class parentClass;
+	private int stackPosition = 8; // Do not start at 0 to avoid weird bugs caused by comparisons with 0
+	private int savedStackPosition;
+	private int maxStackSize = 1000000;
+	private int functionSpaceStartAddress = maxStackSize;
+	private int functionSpaceSize = 1000;
+	private int nextfunctionPointer = functionSpaceStartAddress;
+	private int heapStartAddress = functionSpaceStartAddress + functionSpaceSize;
+	private TreeMap<Integer, MemoryBlock> memoryBlockMap = new TreeMap<>();
+	private HashMap<String, Integer> stringMap = new HashMap<>();
+	private FunctionMap functionMap = new FunctionMap();
 
-	protected Runtime(Class parentClazz) {
-		parentClass = parentClazz;
-	}
-
-	public static int growMemory(int minSize) {
+	public int growMemory(int minSize) {
 		int newSize = memory.length * 2;
 		while (newSize < minSize) {
 			newSize = memory.length * 2;
@@ -37,15 +32,15 @@ public class Runtime {
 		return newSize;
 	}
 
-	public static void mir_saveStack() {
+	public void mir_saveStack() {
 		savedStackPosition = stackPosition;
 	}
 
-	public static void mir_restoreStack() {
+	public void mir_restoreStack() {
 		stackPosition = savedStackPosition;
 	}
 
-	public static long mir_allocate(long sizeInBytes) {
+	public long mir_allocate(long sizeInBytes) {
 		int oldStackPosition = stackPosition;
 		if ((oldStackPosition + sizeInBytes) > maxStackSize) {
 			throw new RuntimeException("Stack overflow");
@@ -54,7 +49,7 @@ public class Runtime {
 		return oldStackPosition;
 	}
 
-//	public static long mir_allocate(int sizeInBytes) {
+//	public long mir_allocate(int sizeInBytes) {
 //		int oldStackPosition = stackPosition;
 //		if ((oldStackPosition + sizeInBytes) > memory.length) {
 //			growMemory(oldStackPosition + sizeInBytes);
@@ -63,22 +58,22 @@ public class Runtime {
 //		return oldStackPosition;
 //	}
 
-	private static MemoryBlock addBlock(int address, int size, boolean free) {
+	private MemoryBlock addBlock(int address, int size, boolean free) {
 		if ((address + size) > memory.length) {
 			// TODO Try to merge free blocks before growing memory
 			growMemory(address + size);
 		}
 		MemoryBlock block = new MemoryBlock(address, size, free);
-		blocks.put(address, block);
+		memoryBlockMap.put(address, block);
 		//System.out.println(block);
 		return block;
 	}
 
-	public static long malloc(long longSize) {
+	public long malloc(long longSize) {
 		int size = (int) longSize;
 		// Try to find a free block
-		if (!blocks.isEmpty()) {
-			Iterator<MemoryBlock> i = blocks.values().iterator();
+		if (!memoryBlockMap.isEmpty()) {
+			Iterator<MemoryBlock> i = memoryBlockMap.values().iterator();
 			while (i.hasNext()) {
 				MemoryBlock block = i.next();
 				if (block.getSize() >= size && block.isFree()) {
@@ -97,17 +92,17 @@ public class Runtime {
 		}
 		// No block was found. Let's create a new one.
 		int newAddress;
-		if (blocks.isEmpty()) {
+		if (memoryBlockMap.isEmpty()) {
 			newAddress = heapStartAddress;
 		} else {
-			MemoryBlock lastBlock = blocks.lastEntry().getValue();
+			MemoryBlock lastBlock = memoryBlockMap.lastEntry().getValue();
 			newAddress = lastBlock.getStartAddress() + lastBlock.getSize();
 		}
 		addBlock(newAddress, size, false);
 		return newAddress;
 	}
 
-	public static long calloc(long elementCount, long elementSize) {
+	public long calloc(long elementCount, long elementSize) {
 		int totalSize = (int) (elementCount * elementSize);
 		int addr = (int) malloc(totalSize);
 		if (addr == 0) {
@@ -119,33 +114,33 @@ public class Runtime {
 		return addr;
 	}
 
-	public static void free(long longAddr) {
-		MemoryBlock block = blocks.get((int) longAddr);
+	public void free(long longAddr) {
+		MemoryBlock block = memoryBlockMap.get((int) longAddr);
 		if (block == null) {
 			throw new RuntimeException("Can't free memory block at address " + longAddr);
 		}
 		block.setFree(true);
 	}
 
-	public static byte mir_read_byte(long addr) {
+	public byte mir_read_byte(long addr) {
 		long b = memory[(int) addr];
 		//System.out.println("readbyte(" + addr + "): " + b);
 		return (byte) b;
 	}
 
-	public static void mir_write_byte(long addr, long b) {
+	public void mir_write_byte(long addr, long b) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		memory[(int) addr] = (byte) (b & 0xFF);
 	}
 
-	public static void mir_write_short(long longAddr, short v) {
+	public void mir_write_short(long longAddr, short v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		int addr = (int) longAddr;
 		memory[addr] = (byte) ((v >> 8) & 0xFF);
 		memory[addr + 1] = (byte) (v & 0xFF);
 	}
 
-	public static void mir_write_int(long longAddr, long v) {
+	public void mir_write_int(long longAddr, long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		int addr = (int) longAddr;
 		int i = (int) v;
@@ -155,7 +150,7 @@ public class Runtime {
 		memory[addr + 3] = (byte) (i & 0xFF);
 	}
 
-	public static int mir_read_int(long longAddr) {
+	public int mir_read_int(long longAddr) {
 		int addr = (int) longAddr;
 		int b1 = memory[addr];
 		int b2 = memory[addr + 1];
@@ -166,7 +161,7 @@ public class Runtime {
 		return i;
 	}
 
-	public static void mir_write_long(long longAddr, long l) {
+	public void mir_write_long(long longAddr, long l) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		int addr = (int) longAddr;
 		memory[addr] = (byte) ((l >> 56) & 0xFF);
@@ -179,7 +174,7 @@ public class Runtime {
 		memory[addr + 7] = (byte) (l & 0xFF);
 	}
 
-	public static long mir_read_long(long longAddr) {
+	public long mir_read_long(long longAddr) {
 		int addr = (int) longAddr;
 		long b1 = ((long) (memory[addr] & 0xFF)) << 56;
 		long b2 = ((long) (memory[addr + 1] & 0xFF)) << 48;
@@ -194,18 +189,18 @@ public class Runtime {
 		return l;
 	}
 
-	public static void mir_write_double(long longAddr, double d) {
+	public void mir_write_double(long longAddr, double d) {
 		long longBits = Double.doubleToRawLongBits(d);
 		mir_write_long(longAddr, longBits);
 	}
 
-	public static double mir_read_double(long longAddr) {
+	public double mir_read_double(long longAddr) {
 		long longBits = mir_read_long(longAddr);
 		double d = Double.longBitsToDouble(longBits);
 		return d;
 	}
 
-	public static long mir_allocate_bytes(byte[] s) {
+	public long mir_allocate_bytes(byte[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length);
 		for (int i = 0; i < s.length; i++) {
@@ -214,7 +209,7 @@ public class Runtime {
 		return addr;
 	}
 
-	public static long mir_allocate_ubytes(short[] s) {
+	public long mir_allocate_ubytes(short[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length);
 		for (int i = 0; i < s.length; i++) {
@@ -223,7 +218,7 @@ public class Runtime {
 		return addr;
 	}
 
-	public static long mir_allocate_shorts(short[] s) {
+	public long mir_allocate_shorts(short[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length * 2);
 		for (int i = 0; i < s.length; i++) {
@@ -232,7 +227,7 @@ public class Runtime {
 		return addr;
 	}
 
-	public static long mir_allocate_longs(long[] s) {
+	public long mir_allocate_longs(long[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length * 8);
 		for (int i = 0; i < s.length; i++) {
@@ -241,28 +236,28 @@ public class Runtime {
 		return addr;
 	}
 
-	public static long mir_allocate_byte(long v) {
+	public long mir_allocate_byte(long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(1);
 		mir_write_byte(addr, v);
 		return addr;
 	}
 
-	public static long mir_allocate_int(long v) {
+	public long mir_allocate_int(long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(4);
 		mir_write_int(addr, v);
 		return addr;
 	}
 
-	public static long mir_allocate_long(long v) {
+	public long mir_allocate_long(long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(8);
 		mir_write_long(addr, v);
 		return addr;
 	}
 
-	public static long mir_get_string_ptr(String s) {
+	public long mir_get_string_ptr(String s) {
 		if (stringMap.containsKey(s)) {
 			return stringMap.get(s);
 		}
@@ -277,7 +272,7 @@ public class Runtime {
 		return addr;
 	}
 
-	private static String getStringFromMemory(long addr) {
+	private String getStringFromMemory(long addr) {
 		// TODO Try to get String from the string map
 		int endCharIndex = 0;
 		while (true) {
@@ -295,13 +290,13 @@ public class Runtime {
 		return s;
 	}
 
-	public static long mir_get_function_ptr(String functionName) {
+	public long mir_get_function_ptr(String functionName) {
 		int functionAddress = 0;
 		// Check if we have already registered the given function
 		MethodHandle methodHandle = functionMap.getMethodHandleByName(functionName);
 		// If unknown, link then register the function
 		if (methodHandle == null) {
-			Method[] methods = parentClass.getDeclaredMethods();
+			Method[] methods = getClass().getDeclaredMethods();
 			int targetMethodIndex = -1;
 			for (int i = 0; i < methods.length; i++) {
 				//System.out.println("method name: " + methods[i].getName());
@@ -324,7 +319,7 @@ public class Runtime {
 		return functionAddress;
 	}
 
-	public static long mir_call_function(long functionAddr, Object... args) {
+	public long mir_call_function(long functionAddr, Object... args) {
 		if ((functionAddr < functionSpaceStartAddress) || (functionAddr > functionSpaceStartAddress + functionSpaceSize)) {
 			throw new RuntimeException("Bad function address: " + functionAddr);
 		}
@@ -333,7 +328,7 @@ public class Runtime {
 			throw new RuntimeException("Function at addr=" + functionAddr + " is not mapped.");
 		}
 		try {
-			Object result = methodHandle.getMethod().invoke(null, args);
+			Object result = methodHandle.getMethod().invoke(this, args);
 			//System.out.println("result=" + result);
 			return ((Number) result).longValue();
 		} catch (Exception e) {
@@ -341,23 +336,23 @@ public class Runtime {
 		}
 	}
 
-	public static long memcpy(long destAddr, long srcAddr, long size) {
+	public long memcpy(long destAddr, long srcAddr, long size) {
 		System.arraycopy(memory, (int) srcAddr, memory, (int) destAddr, (int) size);
 		return destAddr;
 	}
 
-	public static int printf(String string, Object... args) {
-		System.out.printf(string, args);
-		return 1;
-	}
+//	public int printf(String string, Object... args) {
+//		System.out.printf(string, args);
+//		return 1;
+//	}
 
-	public static int printf(long addr, Object... args) {
+	public int printf(long addr, Object... args) {
 		String s = getStringFromMemory(addr);
 		System.out.printf(s, args);
 		return 1;
 	}
 
-	public static void abort() {
+	public void abort() {
 		System.out.println("aborting...");
 		System.exit(1);
 	}
