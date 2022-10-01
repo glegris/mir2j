@@ -557,7 +557,13 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
 	    fprintf (f, ") ");
         //}
       }
-      out_op (ctx, f, ops[i]);
+      if (ops[i].mode == MIR_OP_REF && ops[i].u.ref->item_type == MIR_func_item) {
+        fprintf (f, "mir_get_function_ptr(\"");
+        out_op (ctx, f, ops[i]);
+        fprintf (f, "\")");
+      } else {
+        out_op (ctx, f, ops[i]);
+      }
     }
     fprintf (f, ");\n");
 
