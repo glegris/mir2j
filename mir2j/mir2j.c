@@ -8,6 +8,8 @@
 
 static MIR_func_t curr_func;
 static int unused_data_addr_count = 0;
+// This flag prevents jump after a return statement (bug ?) 
+static int is_in_dead_code = FALSE;
 
 static void out_type (FILE *f, MIR_type_t t) {
   switch (t) {
@@ -456,6 +458,9 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_DGE:
   case MIR_LDGE: out_fop3 (ctx, f, ops, ">="); break;
   case MIR_JMP: 
+    if (is_in_dead_code) {
+      fprintf (f, "// Dead code: ");
+    }
     out_jmp (ctx, f, ops[0]); 
     fprintf (f, "\n");
     break;
@@ -619,10 +624,12 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
       out_op (ctx, f, insn->ops[0]);
     }
     fprintf (f, ";\n");
+    is_in_dead_code = TRUE;
     break;
   case MIR_LABEL:
     mir_assert (ops[0].mode == MIR_OP_INT);
     fprintf (f, "case \"l%" PRId64 "\":\n", ops[0].u.i);
+    is_in_dead_code = FALSE;
     break;
   default: mir_assert (FALSE);
   }
@@ -811,6 +818,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   fprintf (f, "} // End of switch\n"); 
   fprintf (f, "} // End of while\n");
   fprintf (f, "} // End of function %s\n\n", curr_func->name);
+  is_in_dead_code = FALSE;
 }
 
 void MIR_module2j (MIR_context_t ctx, FILE *f, MIR_module_t m) {
