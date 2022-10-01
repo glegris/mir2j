@@ -605,17 +605,21 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
       break;
   } 
   */
-  /*
   case MIR_RET:
-    fprintf (f, "return ");
+    fprintf (f, "return");
     if (insn->nops > 1) {
-      fprintf (stderr, "return with multiple values is not implemented\n");
+      fprintf (stderr, "return with multiple values is not implemented. See function %s\n", curr_func->name);
       exit (1);
     }
-    if (insn->nops != 0) out_op (ctx, f, ops[0]);
+    // Cast returned type to the function return type
+    if (insn->nops != 0) { 
+      fprintf (f, " (");
+      out_type (f, curr_func->res_types[0]);
+      fprintf (f, ") ");
+      out_op (ctx, f, insn->ops[0]);
+    }
     fprintf (f, ";\n");
     break;
-  */
   case MIR_LABEL:
     mir_assert (ops[0].mode == MIR_OP_INT);
     fprintf (f, "case \"l%" PRId64 "\":\n", ops[0].u.i);
@@ -802,22 +806,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   fprintf (f, "case \"startLabel\":\n");
   for (MIR_insn_t insn = DLIST_HEAD (MIR_insn_t, curr_func->insns); insn != NULL;
        insn = DLIST_NEXT (MIR_insn_t, insn)) {
-	if (insn->code == MIR_RET) { // Cast returned type to the function return type  
-      fprintf (f, "return ");
-      if (insn->nops > 1) {
-        fprintf (stderr, "return with multiple values is not implemented. See function %s\n", curr_func->name);
-        exit (1);
-      }
-      if (insn->nops != 0) { 
-        fprintf (f, "(");
-        out_type (f, curr_func->res_types[0]);
-        fprintf (f, ") ");
-        out_op (ctx, f, insn->ops[0]);
-      }
-      fprintf (f, ";\n");
-	} else {
-      out_insn (ctx, f, insn);
-    }
+    out_insn (ctx, f, insn);
   }
   fprintf (f, "} // End of switch\n"); 
   fprintf (f, "} // End of while\n");
