@@ -31,11 +31,21 @@ public class RuntimeTest extends Runtime {
 		mir_write_long(addr + 8, 0x876543210L);
 		v = mir_read_long(addr + 8);
 		check("Write/Read long #2", v == 0x876543210L);
-		addr = mir_allocate_longs(new long[] { 0 , 12, 0, 46 } );
+		addr = mir_set_data_longs(new long[] { 0 , 12, 0, 46 } );
 		v = mir_read_long(addr + 8);
 		check("Write/Read long #2", v == 12);
 		v = mir_read_long(addr + 24);
 		check("Write/Read long #2", v == 46);
+		mir_write_double(addr + 32, 45.678);
+		double d = mir_read_double(addr + 32);
+		check("Write/Read double", d == 45.678);
+		
+		
+		addr = malloc(60);
+		mir_write_byte(addr + 25, 89);
+		long addr2 = realloc(addr, 26);
+		v = mir_read_byte(addr2 + 25);
+		check("Malloc #1 (realloc)", v == 89);
 
 		//System.out.println("i=" + Long.toHexString(v));
 		//System.out.println("v=" + v);

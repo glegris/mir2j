@@ -21,6 +21,10 @@ public class Runtime {
 	private HashMap<String, Integer> stringMap = new HashMap<>();
 	private FunctionMap functionMap = new FunctionMap();
 
+	public static int stdin = 0;
+	public static int stdout = 1;
+	public static int stderr = 2;
+
 	public int growMemory(int minSize) {
 		int newSize = memory.length * 2;
 		while (newSize < minSize) {
@@ -114,6 +118,20 @@ public class Runtime {
 		return addr;
 	}
 
+	public long realloc(long blockAddr, long newSize) {
+		MemoryBlock block = memoryBlockMap.get((int) blockAddr);
+		if (block == null) {
+			throw new RuntimeException("Can't find memory block at address " + blockAddr);
+		}
+		// TODO Try to not copy: 
+		// if newSize > oldSize: merging old block with next blocks
+		// if newSize < oldSize: reducing the current bloc size and create a (free) new one 
+		int newBlockAddr = (int) malloc(newSize);
+		int length = Math.min(block.getSize(), (int) newSize);
+		System.arraycopy(memory, block.getStartAddress(), memory, newBlockAddr, length);
+		return newBlockAddr;
+	}
+
 	public void free(long longAddr) {
 		MemoryBlock block = memoryBlockMap.get((int) longAddr);
 		if (block == null) {
@@ -133,7 +151,15 @@ public class Runtime {
 		memory[(int) addr] = (byte) (b & 0xFF);
 	}
 
-	public void mir_write_short(long longAddr, short v) {
+	public short mir_read_short(long longAddr) {
+		int addr = (int) longAddr;
+		int b1 = memory[addr];
+		int b2 = memory[addr + 1];
+		int i = ((b1 & 0xFF) << 8) | (b2 & 0xFF);
+		return (short) i;
+	}
+
+	public void mir_write_short(long longAddr, long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		int addr = (int) longAddr;
 		memory[addr] = (byte) ((v >> 8) & 0xFF);
@@ -200,7 +226,7 @@ public class Runtime {
 		return d;
 	}
 
-	public long mir_allocate_bytes(byte[] s) {
+	public long mir_set_data_bytes(byte[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length);
 		for (int i = 0; i < s.length; i++) {
@@ -209,7 +235,7 @@ public class Runtime {
 		return addr;
 	}
 
-	public long mir_allocate_ubytes(short[] s) {
+	public long mir_set_data_ubytes(short[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length);
 		for (int i = 0; i < s.length; i++) {
@@ -218,7 +244,7 @@ public class Runtime {
 		return addr;
 	}
 
-	public long mir_allocate_shorts(short[] s) {
+	public long mir_set_data_shorts(short[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length * 2);
 		for (int i = 0; i < s.length; i++) {
@@ -227,7 +253,7 @@ public class Runtime {
 		return addr;
 	}
 
-	public long mir_allocate_longs(long[] s) {
+	public long mir_set_data_longs(long[] s) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length * 8);
 		for (int i = 0; i < s.length; i++) {
@@ -236,24 +262,38 @@ public class Runtime {
 		return addr;
 	}
 
-	public long mir_allocate_byte(long v) {
+	public long mir_set_data_byte(long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(1);
 		mir_write_byte(addr, v);
 		return addr;
 	}
 
-	public long mir_allocate_int(long v) {
+	public long mir_set_data_int(long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(4);
 		mir_write_int(addr, v);
 		return addr;
 	}
 
-	public long mir_allocate_long(long v) {
+	public long mir_set_data_long(long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(8);
 		mir_write_long(addr, v);
+		return addr;
+	}
+
+	public long mir_set_data_ulong(long v) {
+		return mir_set_data_long(v);
+	}
+	
+	public long mir_set_data_ref(long v) {
+		return mir_set_data_long(v);
+	}
+
+	public long mir_allocate_double(double v) {
+		long addr = mir_allocate(8);
+		mir_write_double(addr, v);
 		return addr;
 	}
 
@@ -323,7 +363,7 @@ public class Runtime {
 		if ((functionAddr < functionSpaceStartAddress) || (functionAddr > functionSpaceStartAddress + functionSpaceSize)) {
 			throw new RuntimeException("Bad function address: " + functionAddr);
 		}
-		MethodHandle methodHandle = functionMap.getMethodByAddress((int)functionAddr);
+		MethodHandle methodHandle = functionMap.getMethodByAddress((int) functionAddr);
 		if (methodHandle == null) {
 			throw new RuntimeException("Function at addr=" + functionAddr + " is not mapped.");
 		}
@@ -355,6 +395,15 @@ public class Runtime {
 	public void abort() {
 		System.out.println("aborting...");
 		System.exit(1);
+	}
+
+	public void exit(int v) {
+		System.exit(v);
+	}
+
+	public long fprintf(long mir_read_long, Object... args) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 //	public long strtol(long stringAddr, long endAddr, int base) {
@@ -408,11 +457,11 @@ class FunctionMap {
 		map.put(functionName, methodHandle);
 		map.put(methodHandle.getAddress(), methodHandle);
 	}
-	
+
 	public MethodHandle getMethodHandleByName(String functionName) {
 		return map.get(functionName);
 	}
-	
+
 	public MethodHandle getMethodByAddress(int address) {
 		return map.get(address);
 	}
@@ -420,10 +469,10 @@ class FunctionMap {
 }
 
 class MethodHandle {
-	
+
 	private int address;
 	private Method method;
-	
+
 	public MethodHandle(int address, Method method) {
 		this.address = address;
 		this.method = method;
