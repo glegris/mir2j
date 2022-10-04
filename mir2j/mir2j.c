@@ -185,7 +185,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
   */
   case MIR_OP_LABEL:
     mir_assert (op.u.label->ops[0].mode == MIR_OP_INT);
-    fprintf (f, "l%" PRId64, op.u.label->ops[0].u.i);
+    fprintf (f, "%" PRId64, op.u.label->ops[0].u.i);
     break;
   default: mir_assert (FALSE);
   }
@@ -283,9 +283,9 @@ static void out_usop3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const ch
 
 static void out_jmp (MIR_context_t ctx, FILE *f, MIR_op_t label_op) {
   mir_assert (label_op.mode == MIR_OP_LABEL);
-  fprintf (f, "label = \""); // goto
+  fprintf (f, "mir_label = "); // goto
   out_op (ctx, f, label_op);
-  fprintf (f, "\"; break;");
+  fprintf (f, "; break;");
 }
 
 static void out_bcmp (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
@@ -628,7 +628,7 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     break;
   case MIR_LABEL:
     mir_assert (ops[0].mode == MIR_OP_INT);
-    fprintf (f, "case \"l%" PRId64 "\":\n", ops[0].u.i);
+    fprintf (f, "case %" PRId64 ":\n", ops[0].u.i);
     is_in_dead_code = FALSE;
     break;
   default: mir_assert (FALSE);
@@ -807,10 +807,10 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     out_type (f, var.type);
     fprintf (f, " %s = 0;\n", var.name);
   }
-  fprintf (f, "  String label = \"startLabel\";\n");
+  fprintf (f, "  int mir_label = -1;\n");
   fprintf (f, "while (true) {\n");
-  fprintf (f, "switch (label) {\n");
-  fprintf (f, "case \"startLabel\":\n");
+  fprintf (f, "switch (mir_label) {\n");
+  fprintf (f, "case -1:\n");
   for (MIR_insn_t insn = DLIST_HEAD (MIR_insn_t, curr_func->insns); insn != NULL;
        insn = DLIST_NEXT (MIR_insn_t, insn)) {
     out_insn (ctx, f, insn);
