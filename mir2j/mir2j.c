@@ -5,11 +5,97 @@
 #include "mir2j.h"
 #include <float.h>
 #include <inttypes.h>
+#include <string.h>
+#include <mir-hash.h>
 
 static MIR_func_t curr_func;
 static int unused_data_addr_count = 0;
 // This flag prevents jump after a return statement (bug ?) 
 static int is_in_dead_code = FALSE;
+
+
+/* Symbol table */
+typedef struct mir2j_symbol {
+  const char *name;
+  char* mangled_name;
+  char visible;
+} symbol_t;
+
+DEF_HTAB (symbol_t);
+
+HTAB (symbol_t) * symbol_table;
+
+static int symbol_eq (symbol_t s1, symbol_t s2, void *arg) {
+  return strcmp (s1.name, s2.name) == 0;
+}
+
+static htab_hash_t symbol_hash (symbol_t s, void *arg) {
+  return mir_hash (s.name, strlen (s.name), 0);
+}
+
+static char* mormalize_name(char* name) {
+  if (name[0] == '.') {
+    return &name[1];
+  } else {
+  	return name;
+  }
+  
+/*
+  int var_name_length = strlen(item->u.data->name) + 1; 
+  char *var_name = (char *) malloc(var_name_length);
+  strncpy(var_name, item->u.data->name, var_name_length);
+  if (var_name[0] == '.') {
+    var_name[0] = '_';
+  }
+  fprintf(f, "static long %s = mir_allocate_", var_name);
+  free(var_name);
+*/
+}
+
+static symbol_t add_symbol(const char* name, char visible) {
+  symbol_t symbol;
+  symbol.name = name;
+  symbol.visible = visible;
+  char* normalized_name = mormalize_name((char*) name);
+  if (visible) {  
+    int size = strlen(normalized_name) + 1;
+    char* c_name = (char*) malloc(size);
+    strcpy(c_name, normalized_name);
+  	symbol.mangled_name = c_name;
+  } else {
+    char* prefix = "m1_";
+    int size = strlen(normalized_name) + strlen(prefix) + 1;
+    char *m_name = (char*) malloc(size);
+    strcpy(m_name, prefix);
+    strcat(m_name, normalized_name);
+  	symbol.mangled_name = m_name;
+  }
+  HTAB_DO (symbol_t, symbol_table, symbol, HTAB_INSERT, symbol);
+  return symbol;
+}
+
+static char* get_mangled_symbol_name(const char* name) {
+  //char* mangled_name;
+  symbol_t symbol;
+  symbol.name = name;
+  if (HTAB_DO (symbol_t, symbol_table, symbol, HTAB_FIND, symbol)) {
+    return symbol.mangled_name;
+  } else {
+    symbol = add_symbol(name, FALSE);
+    return symbol.mangled_name;
+  }
+  //return mangled_name;
+}
+
+static void create_symbol_table() {
+  HTAB_CREATE (symbol_t, symbol_table, 100, symbol_hash, symbol_eq, NULL);
+}
+
+static void destroy_symbol_table() {
+  // TODO free symbol names
+  HTAB_DESTROY (symbol_t, symbol_table);
+}
+
 
 static void out_type (FILE *f, MIR_type_t t) {
   switch (t) {
@@ -79,7 +165,11 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
   case MIR_OP_FLOAT: fprintf (f, "%#.*gf", FLT_MANT_DIG, op.u.f); break;
   case MIR_OP_DOUBLE: fprintf (f, "%#.*g", DBL_MANT_DIG, op.u.d); break;
   case MIR_OP_LDOUBLE: fprintf (f, "%#.*lgl", LDBL_MANT_DIG, op.u.d); break;
-  case MIR_OP_REF: fprintf (f, "%s", MIR_item_name (ctx, op.u.ref)); break;
+  case MIR_OP_REF: {
+    char* name = (char*) MIR_item_name (ctx, op.u.ref);
+    char* mangled_name = get_mangled_symbol_name(name);
+    fprintf (f, "%s", mangled_name); break;
+  }
   case MIR_OP_STR: {
     fprintf (f, "mir_get_string_ptr(\"");
     for (int i = 0; i < op.u.str.len - 1; i++) {
@@ -635,25 +725,6 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   }
 }
 
-static const char* mangle_name(const char* name) {
-  if (name[0] == '.') {
-    return &name[1];
-  } else {
-  	return name;
-  }
-  
-/*
-  int var_name_length = strlen(item->u.data->name) + 1; 
-  char *var_name = (char *) malloc(var_name_length);
-  strncpy(var_name, item->u.data->name, var_name_length);
-  if (var_name[0] == '.') {
-    var_name[0] = '_';
-  }
-  fprintf(f, "static long %s = mir_allocate_", var_name);
-  free(var_name);
-*/
-}
-
 void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   MIR_var_t var;
   size_t i, nlocals;
@@ -666,13 +737,19 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
       fprintf(f, " %s = %d;\n", exported_item->u.data->name, exported_item->u.data->u.els[0]);
     }
     */
+    MIR_item_t exported_item = item->ref_def;
+    add_symbol(MIR_item_name(ctx, exported_item), TRUE);
     return;
   }
   if (item->item_type == MIR_import_item) {
     //fprintf (f, "extern char %s[];\n", item->u.import_id);
+    MIR_item_t imported_item = item->ref_def;
+    add_symbol(item->u.import_id, TRUE);
     return;
   }
   if (item->item_type == MIR_forward_item) {  // ???
+    MIR_item_t forwarded_item = item->ref_def;
+    add_symbol(MIR_item_name(ctx, forwarded_item), FALSE);
     return;
   }
   if (item->item_type == MIR_proto_item) {
@@ -702,7 +779,8 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   if (item->item_type == MIR_data_item) {
     fprintf(f, "long ");
     if (item->u.data->name != NULL) {
-    	const char* var_name = mangle_name(item->u.data->name);
+    	//const char* var_name = mangle_name(item->u.data->name);
+        char *var_name = get_mangled_symbol_name(item->u.data->name);
     	fprintf(f, "%s", var_name);
     } else {
         fprintf(f, "unused_data_addr_%d", unused_data_addr_count++);
@@ -747,12 +825,13 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   if (item->item_type == MIR_ref_data_item) {
     fprintf(f, "long ");
     if (item->u.ref_data->name != NULL) {
-    	fprintf(f, "%s", item->u.ref_data->name);
+        char* out_var_name = get_mangled_symbol_name(item->u.ref_data->name);
+    	fprintf(f, "%s", out_var_name);
     } else {
         fprintf(f, "unused_data_addr_%d", unused_data_addr_count++);
     }
-    const char *var_name = mangle_name(item->u.ref_data->ref_item->u.ref_data->name);
-    fprintf(f, " = mir_set_data_ref(%s + %d);\n", var_name, item->u.ref_data->disp);
+    char* in_var_name = get_mangled_symbol_name(item->u.ref_data->ref_item->u.ref_data->name);
+    fprintf(f, " = mir_set_data_ref(%s + %d);\n", in_var_name, item->u.ref_data->disp);
     return;
   }
   if (item->item_type == MIR_expr_data_item) {
@@ -761,16 +840,21 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
       return;
   }
   if (item->item_type == MIR_bss_item) {
-    fprintf(f, "long %s = mir_allocate(%d);\n", item->u.bss->name, item->u.bss->len);
+    char* bss_name = get_mangled_symbol_name(item->u.bss->name);
+    fprintf(f, "long %s = mir_allocate(%d);\n", bss_name, item->u.bss->len);
     return;
   }
+
+  curr_func = item->u.func;
+  char* func_name = (char*) curr_func->name;
+  symbol_t func_symbol;
   if (!item->export_p) {
     fprintf (f, "private "); // static
+    func_symbol = add_symbol(curr_func->name, FALSE);
   } else {
   	fprintf (f, "public ");
+  	func_symbol = add_symbol(curr_func->name, TRUE);
   }
-  //fprintf (f, "static ");
-  curr_func = item->u.func;
   if (curr_func->nres == 0)
     fprintf (f, "void");
   else if (curr_func->nres == 1)
@@ -780,7 +864,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     (*MIR_get_error_func (ctx)) (MIR_func_error,
                                  "Multiple result functions can not be represented in C");
   }
-  fprintf (f, " %s (", curr_func->name);
+  fprintf (f, " %s (", func_symbol.mangled_name);
   //if (curr_func->nargs == 0) fprintf (f, "void");
   for (i = 0; i < curr_func->nargs; i++) {
     if (i != 0) fprintf (f, ", ");
@@ -822,6 +906,8 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
 }
 
 void MIR_module2j (MIR_context_t ctx, FILE *f, MIR_module_t m) {
+  create_symbol_table();
+
   fprintf(f, "import mir2j.Runtime;\n\n");
   fprintf(f, "public class Main extends Runtime {\n\n");
   //fprintf(f, "public Main() {\n");
@@ -831,6 +917,8 @@ void MIR_module2j (MIR_context_t ctx, FILE *f, MIR_module_t m) {
        item = DLIST_NEXT (MIR_item_t, item))
     out_item (ctx, f, item);
   fprintf(f, "} // End of class Main\n");
+
+  destroy_symbol_table();
 }
 
 /* ------------------------- Small test example ------------------------- */
