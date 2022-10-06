@@ -55,7 +55,7 @@ public class RuntimeTest extends Runtime {
 	}
 
 	public int sieveWithStringLabels(int _i0_n) {
-		mir_saveStack();
+		int saved_stack_position = mir_get_stack_position();
 		long i0_n = _i0_n;
 		long fp = 0;
 		long I0_iter = 0;
@@ -170,14 +170,14 @@ public class RuntimeTest extends Runtime {
 					break;
 				}
 			case "l17":
-				mir_restoreStack();
+				mir_set_stack_position(saved_stack_position);
 				return (int) I0_count;
 			} // End of switch
 		} // End of while
 	} // End of function sieve
 
 	public int sieveWithIntegerLabels(int _i0_n) {
-		mir_saveStack();
+		int saved_stack_position = mir_get_stack_position();
 		long i0_n = _i0_n;
 		long fp = 0;
 		long I0_iter = 0;
@@ -292,14 +292,14 @@ public class RuntimeTest extends Runtime {
 					break;
 				}
 			case 17:
-				mir_restoreStack();
+				mir_set_stack_position(saved_stack_position);
 				return (int) I0_count;
 			} // End of switch
 		} // End of while
 	} // End of function sieve
 	
 	public int sieveWithIntegerLabelsWithoutLongCast(int _i0_n) {
-		mir_saveStack();
+		int saved_stack_position = mir_get_stack_position();
 		int i0_n = _i0_n;
 		long fp = 0;
 		int I0_iter = 0;
@@ -414,14 +414,14 @@ public class RuntimeTest extends Runtime {
 					break;
 				}
 			case 17:
-				mir_restoreStack();
+				mir_set_stack_position(saved_stack_position);
 				return I0_count;
 			} // End of switch
 		} // End of while
 	} // End of function sieve
 	
 	public int sieveWithIntegerLabelsWithoutLongCastAndLocalMemoryAccess(int _i0_n) {
-		mir_saveStack();
+		int saved_stack_position = mir_get_stack_position();
 		byte[] memory = new byte[SIEVE_SIZE + 8];
 		int i0_n = _i0_n;
 		int fp = 0;
@@ -537,7 +537,7 @@ public class RuntimeTest extends Runtime {
 					break;
 				}
 			case 17:
-				mir_restoreStack();
+				mir_set_stack_position(saved_stack_position);
 				return I0_count;
 			} // End of switch
 		} // End of while

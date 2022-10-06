@@ -12,7 +12,7 @@ static MIR_func_t curr_func;
 static int unused_data_addr_count = 0;
 // This flag prevents jump after a return statement (bug ?) 
 static int is_in_dead_code = FALSE;
-
+static char curr_func_has_stack_allocation = FALSE;
 
 /* Symbol table */
 typedef struct mir2j_symbol {
@@ -701,6 +701,10 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   } 
   */
   case MIR_RET:
+    if (curr_func_has_stack_allocation) {
+      fprintf (f, "mir_set_stack_position(mir_saved_stack_position);\n");
+      fprintf (f, "  ");
+    }
     fprintf (f, "return");
     if (insn->nops > 1) {
       fprintf (stderr, "return with multiple values is not implemented. See function %s\n", curr_func->name);
@@ -847,6 +851,21 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
 
   curr_func = item->u.func;
   char* func_name = (char*) curr_func->name;
+
+  // First pass to analyze the function
+  int curr_func_number_of_labels = 0;
+  curr_func_has_stack_allocation = FALSE;
+  for (MIR_insn_t insn = DLIST_HEAD (MIR_insn_t, curr_func->insns); insn != NULL;
+       insn = DLIST_NEXT (MIR_insn_t, insn)) {
+    if (insn->code == MIR_LABEL) {
+      curr_func_number_of_labels++; 
+    } else if (insn->code == MIR_ALLOCA) {
+      curr_func_has_stack_allocation = TRUE;	
+    }
+  }
+  //printf("n of labels=%d\n", curr_func_number_of_labels);
+  
+  // Second pass where the code is actually emitted
   symbol_t func_symbol;
   if (!item->export_p) {
     fprintf (f, "private "); // static
@@ -891,16 +910,23 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     out_type (f, var.type);
     fprintf (f, " %s = 0;\n", var.name);
   }
-  fprintf (f, "  int mir_label = -1;\n");
-  fprintf (f, "while (true) {\n");
-  fprintf (f, "switch (mir_label) {\n");
-  fprintf (f, "case -1:\n");
+  if (curr_func_has_stack_allocation) {
+  	fprintf (f, "  int mir_saved_stack_position =  mir_get_stack_position();\n");
+  }
+  if (curr_func_number_of_labels > 0) {
+    fprintf (f, "  int mir_label = -1;\n");
+    fprintf (f, "while (true) {\n");
+    fprintf (f, "switch (mir_label) {\n");
+    fprintf (f, "case -1:\n");
+  }
   for (MIR_insn_t insn = DLIST_HEAD (MIR_insn_t, curr_func->insns); insn != NULL;
        insn = DLIST_NEXT (MIR_insn_t, insn)) {
     out_insn (ctx, f, insn);
   }
-  fprintf (f, "} // End of switch\n"); 
-  fprintf (f, "} // End of while\n");
+  if (curr_func_number_of_labels > 0) {
+    fprintf (f, "} // End of switch\n"); 
+    fprintf (f, "} // End of while\n");
+  }
   fprintf (f, "} // End of function %s\n\n", curr_func->name);
   is_in_dead_code = FALSE;
 }

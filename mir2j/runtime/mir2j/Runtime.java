@@ -11,7 +11,6 @@ public class Runtime {
 	private byte[] memory = new byte[5000000];
 
 	private int stackPosition = 8; // Do not start at 0 to avoid weird bugs caused by comparisons with 0
-	private int savedStackPosition;
 	private int maxStackSize = 1000000;
 	private int functionSpaceStartAddress = maxStackSize;
 	private int functionSpaceSize = 1000;
@@ -36,12 +35,12 @@ public class Runtime {
 		return newSize;
 	}
 
-	public void mir_saveStack() {
-		savedStackPosition = stackPosition;
+	public int mir_get_stack_position() {
+		return stackPosition;
 	}
 
-	public void mir_restoreStack() {
-		stackPosition = savedStackPosition;
+	public void mir_set_stack_position(int position) {
+		stackPosition = position;
 	}
 
 	public long mir_allocate(long sizeInBytes) {
@@ -404,6 +403,23 @@ public class Runtime {
 	public long fprintf(long mir_read_long, Object... args) {
 		// TODO Auto-generated method stub
 		return 0;
+	}
+	
+	public long _setjmp(long jumpBufferAddress) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	
+	public long setjmp(long jumpBufferAddress) {
+		return _setjmp(jumpBufferAddress);
+	}
+	
+	public void _longjmp(long jumpBufferAddress, int val) {
+		// TODO Auto-generated method stub
+	}
+	
+	public void longjmp(long jumpBufferAddress, int val) {
+		_longjmp(jumpBufferAddress, val);
 	}
 
 //	public long strtol(long stringAddr, long endAddr, int base) {
