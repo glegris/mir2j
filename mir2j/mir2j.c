@@ -96,6 +96,48 @@ static void destroy_symbol_table() {
   HTAB_DESTROY (symbol_t, symbol_table);
 }
 
+static size_t get_MIR_type_size (MIR_type_t type) {
+  switch (type) {
+  case MIR_T_I8: return sizeof (int8_t);
+  case MIR_T_U8: return sizeof (uint8_t);
+  case MIR_T_I16: return sizeof (int16_t);
+  case MIR_T_U16: return sizeof (uint16_t);
+  case MIR_T_I32: return sizeof (int32_t);
+  case MIR_T_U32: return sizeof (uint32_t);
+  case MIR_T_I64: return sizeof (int64_t);
+  case MIR_T_U64: return sizeof (uint64_t);
+  case MIR_T_F: return sizeof (float);
+  case MIR_T_D: return sizeof (double);
+  case MIR_T_LD: return sizeof (long double); // FIXME sizeof (long double) can be 8 or 16
+  case MIR_T_P: return sizeof (void *);
+  default: mir_assert (FALSE); return 1;
+  }
+}
+
+static void out_mangled_type (FILE *f, MIR_type_t t) {
+  switch (t) {
+  case MIR_T_I8: fprintf (f, "byte"); break; // int8_t
+  case MIR_T_U8: fprintf (f, "ubyte"); break; // uint8_t
+  case MIR_T_I16: fprintf (f, "short"); break; // int16_t
+  case MIR_T_U16: fprintf (f, "ushort"); break; // uint16_t
+  case MIR_T_I32: fprintf (f, "int"); break; // int32_t
+  case MIR_T_U32: fprintf (f, "uint"); break; // uint32_t
+  case MIR_T_I64: fprintf (f, "long"); break; // int64_t
+  case MIR_T_U64: fprintf (f, "ulong"); break; // uint64_t FIXME ?
+  case MIR_T_F: fprintf (f, "float"); break;
+  case MIR_T_D: fprintf (f, "double"); break;
+  case MIR_T_LD: fprintf (f, "long_double"); break; // long double
+  case MIR_T_P: fprintf (f, "pointer"); break;
+  case MIR_T_BLK:
+  case MIR_T_BLK + 1:
+  case MIR_T_BLK + 2:
+  case MIR_T_BLK + 3:
+  case MIR_T_BLK + 4:
+  case MIR_T_RBLK: fprintf (f, "long"); break;
+  default: mir_assert (FALSE);
+  }
+}
+
 
 static void out_type (FILE *f, MIR_type_t t) {
   switch (t) {
@@ -640,18 +682,17 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
       out_op (ctx, f, ops[1]);
       fprintf (f, "(");	
     }
-    
+
+    int arg_number = VARR_LENGTH (MIR_var_t, proto->args);
     for (size_t i = start; i < insn->nops; i++) {
       if (i != start) fprintf (f, ", ");
-	  //printf("op %i\n", i);
-	  if (!proto->vararg_p) {	
-	    MIR_var_t var = VARR_GET (MIR_var_t, proto->args, i - start);
-        //if (var.type < MIR_T_BOUND) {
+	  int arg_index = i -start;
+	  if (arg_index < arg_number) {
+	    MIR_var_t var = VARR_GET (MIR_var_t, proto->args, arg_index);
 	    fprintf (f, "(");
         out_type (f, var.type);
 	    fprintf (f, ") ");
-        //}
-      }
+	  }      
       if (ops[i].mode == MIR_OP_REF && ops[i].u.ref->item_type == MIR_func_item) {
         fprintf (f, "mir_get_function_ptr(\"");
         out_op (ctx, f, ops[i]);
@@ -725,7 +766,58 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     fprintf (f, "case %" PRId64 ":\n", ops[0].u.i);
     is_in_dead_code = FALSE;
     break;
-  default: mir_assert (FALSE);
+  case MIR_VA_START:
+    // Override the va_list allocation to create our own structure
+    out_op (ctx, f, insn->ops[0]);
+    fprintf (f, " = mir_allocate(20); ");
+    // Set argument index (addr + 16) to 0
+    fprintf (f, "mir_write_int(");
+    out_op (ctx, f, insn->ops[0]);
+    fprintf (f, " + 16, 0); // va_start\n");
+    break;
+  case MIR_VA_ARG: 
+    {
+    fprintf (f, "{ // va_arg\n");
+    int var_type = insn->ops[2].u.mem.type;
+    out_op (ctx, f, insn->ops[0]);
+    fprintf (f, " = ");
+    out_op (ctx, f, insn->ops[1]);
+    fprintf (f, ";\n");
+    // Read the argument index at addr + 16
+    fprintf (f, "int mir_va_index = mir_read_int(");
+    out_op (ctx, f, insn->ops[1]);
+    fprintf (f, " + 16);\n");
+    // Write the argument value at addr
+    fprintf (f, "mir_write_");
+    out_mangled_type(f, var_type);
+    fprintf (f, "(");
+    out_op (ctx, f, insn->ops[1]);
+    fprintf (f, ", (");
+    out_type(f, var_type);
+    fprintf (f, ") ((Number) mir_var_args[mir_va_index++]).");
+    if (var_type == MIR_T_F || var_type == MIR_T_D || var_type == MIR_T_LD) {
+      fprintf (f, "doubleValue()");	
+    } else {
+      fprintf (f, "longValue()");	
+    }
+    fprintf (f, ");\n");
+    // Write the incremented argument index at addr + 16
+    fprintf (f, "mir_write_int(");
+    out_op (ctx, f, insn->ops[1]);
+    fprintf (f, " + 16, mir_va_index);\n");
+    fprintf (f, "} // end of va_arg\n");
+    }
+    break;
+  case MIR_VA_END:
+    // Do nothing
+    break;
+  case MIR_VA_BLOCK_ARG:
+   fprintf (f, "// Instruction MIR_VA_BLOCK_ARG is not supported yet\n");
+   exit(1); 
+   break;
+  default: 
+    fprintf (f, "// Unknown instruction code=%d\n", insn->code);
+    mir_assert (FALSE);
   }
 }
 
@@ -790,6 +882,8 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
         fprintf(f, "unused_data_addr_%d", unused_data_addr_count++);
     }
     fprintf(f, " = mir_set_data_");
+    out_mangled_type(f, item->u.data->el_type);
+    /*
     if (item->u.data->el_type == MIR_T_U8) {
       fprintf(f, "ubyte");
     } else if (item->u.data->el_type == MIR_T_U16) {
@@ -801,6 +895,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     } else {
       out_type(f, item->u.data->el_type);
     }
+    */
     if (item->u.data->nel == 1) {
       //fprintf(f, "(alignement = %f)", item->u.data->u.d);
       fprintf(f, "(");
@@ -852,7 +947,9 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   curr_func = item->u.func;
   char* func_name = (char*) curr_func->name;
 
-  // First pass to analyze the function
+  /*------------------------------------
+    First pass to analyze the function
+  ------------------------------------- */
   int curr_func_number_of_labels = 0;
   curr_func_has_stack_allocation = FALSE;
   for (MIR_insn_t insn = DLIST_HEAD (MIR_insn_t, curr_func->insns); insn != NULL;
@@ -863,9 +960,15 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
       curr_func_has_stack_allocation = TRUE;	
     }
   }
+  if (curr_func->vararg_p) {
+    // The current implementation of varargs uses stack allocation
+    curr_func_has_stack_allocation = TRUE;	
+  }
   //printf("n of labels=%d\n", curr_func_number_of_labels);
-  
-  // Second pass where the code is actually emitted
+
+  /*-----------------------------------------------
+    Second pass where the code is actually emitted
+  ------------------------------------------------ */
   symbol_t func_symbol;
   if (!item->export_p) {
     fprintf (f, "private "); // static
@@ -895,6 +998,9 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
                ? " %s"
                : " _%s",
              var.name);
+  }
+  if (curr_func->vararg_p) {
+    fprintf (f, ", Object... mir_var_args");
   }
   fprintf (f, ") {\n");
   for (i = 0; i < curr_func->nargs; i++) {
