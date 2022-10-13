@@ -36,17 +36,43 @@ public class RuntimeTest extends Runtime {
 		check("Write/Read long #2", v == 12);
 		v = mir_read_long(addr + 24);
 		check("Write/Read long #2", v == 46);
-		mir_write_double(addr + 32, 45.678);
-		double d = mir_read_double(addr + 32);
+		addr = 10;
+		mir_write_double(addr, 45.678);
+		double d = mir_read_double(addr);
 		check("Write/Read double", d == 45.678);
+		mir_write_float(addr + 8, 145.678f);
+		float f = mir_read_float(addr + 8);
+		check("Write/Read float", f == 145.678f);
+		mir_write_uint(addr + 12, 278);
+		long ui = mir_read_uint(addr + 12);
+		check("Write/Read uint", ui == 278);
+		mir_write_uint(addr + 16, (long)Integer.MAX_VALUE + 100L);
+		ui = mir_read_uint(addr + 16);
+		check("Write/Read uint #2", ui == ((long)Integer.MAX_VALUE + 100L));
 		
 		
 		addr = malloc(60);
 		mir_write_byte(addr + 25, 89);
 		long addr2 = realloc(addr, 26);
 		v = mir_read_byte(addr2 + 25);
-		check("Malloc #1 (realloc)", v == 89);
-
+		check("Stdlib: malloc #1 (realloc)", v == 89);
+		
+		addr2 = memset(addr2, 254, 26);
+		v = mir_read_ubyte(addr2 + 25);
+		check("Stdlib: memset #1", v == 254);
+		
+		mir_write_byte(addr2, 'y');
+		mir_write_byte(addr2 + 1, 'e');
+		mir_write_byte(addr2 + 2, 's');
+		mir_write_byte(addr2 + 3, '\0');
+		long length = strlen(addr2);
+		check("Stdlib: strlen #1", length == 3);
+		String str = getStringFromMemory(addr2);
+		check("Stdlib: strlen #2", str.equals("yes"));
+		
+		strcpy(addr2 + 8, addr2);
+		v = mir_read_ubyte(addr2 + 10);
+		check("Stdlib: strcpy #1", v == 's');
 		//System.out.println("i=" + Long.toHexString(v));
 		//System.out.println("v=" + v);
 		//int a = (int) ((v >> 32));

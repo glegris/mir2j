@@ -2,6 +2,7 @@ package mir2j;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.IllegalFormatException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
@@ -23,6 +24,7 @@ public class Runtime {
 	public static int stdin = 0;
 	public static int stdout = 1;
 	public static int stderr = 2;
+	public static int EOF = -1;
 
 	public int growMemory(int minSize) {
 		int newSize = memory.length * 2;
@@ -150,6 +152,16 @@ public class Runtime {
 		memory[(int) addr] = (byte) (b & 0xFF);
 	}
 
+	public int mir_read_ubyte(long addr) {
+		int v = ((int) memory[(int) addr]) & 0xFF;
+		return v;
+	}
+
+	public void mir_write_ubyte(long addr, long b) {
+		//System.out.println("writebyte(" + addr + "," + b + ")");
+		memory[(int) addr] = (byte) (b & 0xFF);
+	}
+
 	public short mir_read_short(long longAddr) {
 		int addr = (int) longAddr;
 		int b1 = memory[addr];
@@ -186,6 +198,15 @@ public class Runtime {
 		return i;
 	}
 
+	public void mir_write_uint(long longAddr, long v) {
+		mir_write_int(longAddr, v & 0xFFFFFFFFL);
+	}
+
+	public long mir_read_uint(long longAddr) {
+		long v = ((long) mir_read_int(longAddr)) & 0xFFFFFFFFL;
+		return v;
+	}
+
 	public void mir_write_long(long longAddr, long l) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		int addr = (int) longAddr;
@@ -213,6 +234,25 @@ public class Runtime {
 		//System.out.println("readbyte(" + addr + "): " + b);
 		return l;
 	}
+	
+	public void mir_write_ulong(long longAddr, long l) {
+		mir_write_long(longAddr, l);
+	}
+	
+	public long mir_read_ulong(long longAddr) {
+		return mir_read_long(longAddr);
+	}
+
+	public void mir_write_float(long longAddr, float f) {
+		long intBits = Float.floatToRawIntBits(f);
+		mir_write_int(longAddr, intBits);
+	}
+
+	public float mir_read_float(long longAddr) {
+		int intBits = mir_read_int(longAddr);
+		float f = Float.intBitsToFloat(intBits);
+		return f;
+	}
 
 	public void mir_write_double(long longAddr, double d) {
 		long longBits = Double.doubleToRawLongBits(d);
@@ -238,7 +278,7 @@ public class Runtime {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(s.length);
 		for (int i = 0; i < s.length; i++) {
-			mir_write_byte(addr + i, s[i] & 0xFF);
+			mir_write_ubyte(addr + i, s[i]);
 		}
 		return addr;
 	}
@@ -275,6 +315,13 @@ public class Runtime {
 		return addr;
 	}
 
+	public long mir_set_data_uint(long v) {
+		//System.out.println("writebyte(" + addr + "," + b + ")");
+		long addr = mir_allocate(4);
+		mir_write_int(addr, v);
+		return addr;
+	}
+
 	public long mir_set_data_long(long v) {
 		//System.out.println("writebyte(" + addr + "," + b + ")");
 		long addr = mir_allocate(8);
@@ -285,9 +332,15 @@ public class Runtime {
 	public long mir_set_data_ulong(long v) {
 		return mir_set_data_long(v);
 	}
-	
+
 	public long mir_set_data_ref(long v) {
 		return mir_set_data_long(v);
+	}
+
+	public long mir_set_data_float(float v) {
+		long addr = mir_allocate(4);
+		mir_write_float(addr, v);
+		return addr;
 	}
 
 	public long mir_allocate_double(double v) {
@@ -301,17 +354,22 @@ public class Runtime {
 			return stringMap.get(s);
 		}
 		byte[] bytes = s.getBytes();
-		int size = bytes.length;
-		int addr = (int) malloc(size + 1); // Add one byte to add end string char
-		for (int i = 0; i < size; i++) {
-			mir_write_byte(addr + i, bytes[i]);
-		}
-		mir_write_byte(addr + size, '\0');
+		int addr = (int) malloc(bytes.length + 1); // Add one byte to add end string char
+		writeCStringInMemoryFromJavaString(addr, bytes);
 		stringMap.put(s, addr);
 		return addr;
 	}
 
-	private String getStringFromMemory(long addr) {
+	public void writeCStringInMemoryFromJavaString(long longAddr, byte[] javaStringBytes) {
+		int size = javaStringBytes.length;
+		int addr = (int) longAddr;
+		for (int i = 0; i < size; i++) {
+			mir_write_byte(addr + i, javaStringBytes[i]);
+		}
+		mir_write_byte(addr + size, '\0');
+	}
+
+	public String getStringFromMemory(long addr) {
 		// TODO Try to get String from the string map
 		int endCharIndex = 0;
 		while (true) {
@@ -380,15 +438,148 @@ public class Runtime {
 		return destAddr;
 	}
 
+	public long memset(long addr, int value, long count) {
+		int intCount = (int) count;
+		byte v = (byte) (value & 0xFF);
+		int intAddr = (int) addr;
+		for (int i = 0; i < intCount; i++) {
+			memory[intAddr + i] = v;
+		}
+		return addr;
+	}
+
 //	public int printf(String string, Object... args) {
 //		System.out.printf(string, args);
 //		return 1;
 //	}
 
+	public long strlen(long longAddr) {
+		int addr = (int) longAddr;
+		int endCharIndex = 0;
+		while (true) {
+			char c = (char) memory[addr + endCharIndex];
+			if (c == '\0') {
+				break;
+			}
+			endCharIndex++;
+		}
+		return endCharIndex;
+	}
+
+	public long strcpy(long destAddr, long srcAddr) {
+		int dAddr = (int) destAddr;
+		int sAddr = (int) srcAddr;
+		int i = 0;
+		byte v;
+		do {
+			v = memory[sAddr + i];
+			memory[dAddr + i] = v;
+			i++;
+		} while (v != '\0');
+		return dAddr;
+	}
+
 	public int printf(long addr, Object... args) {
 		String s = getStringFromMemory(addr);
 		System.out.printf(s, args);
 		return 1;
+	}
+
+	public long fprintf(long id, Object... args) {
+		System.out.println("[WARNING] fprintf: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public long fread(long i_88, long l, long m, long u0_rgsFile) {
+		System.out.println("[WARNING] fread: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public long fclose(long u0_rgsFile) {
+		System.out.println("[WARNING] fclose: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public long __isoc99_sscanf(long fp, long mir_get_string_ptr, long u_13, long u_14, long u_15) {
+		System.out.println("[WARNING] __isoc99_sscanf: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public long feof(long u0_rgsFile) {
+		System.out.println("[WARNING] feof: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public long fgets(long fp, int i, long u0_rgsFile) {
+		System.out.println("[WARNING] fgets: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public long fopen(long u0_fileName, long mir_get_string_ptr) {
+		System.out.println("[WARNING] fopen: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	
+	private String convertPrintfFormat(String format) {
+		format = format.replaceAll("%i", "%d");
+		return format;
+	}
+
+	public long sprintf(long bufferAddr, long stringAddr, Object... args) {
+		String inputString = getStringFromMemory(stringAddr);
+		try {
+			String convertedFormat = convertPrintfFormat(inputString);
+			String outputString = String.format(convertedFormat, args);
+			writeCStringInMemoryFromJavaString(bufferAddr, outputString.getBytes());
+			return outputString.length();
+		} catch (IllegalFormatException e) {
+			e.printStackTrace();
+			// TODO Write the error in errno
+			return EOF;
+		}
+	}
+
+	public long vsprintf(long bufferAddr, long stringAddr, long va_listAddress) {
+		System.out.println("[WARNING] vsprintf: not implemented yet");
+		String inputString = getStringFromMemory(stringAddr);
+		try {
+			String convertedFormat = convertPrintfFormat(inputString);
+			// TODO Get arguments from the given va_list
+			//String outputString = String.format(convertedFormat, args);
+			String outputString = convertedFormat;
+			writeCStringInMemoryFromJavaString(bufferAddr, outputString.getBytes());
+			return outputString.length();
+		} catch (IllegalFormatException e) {
+			e.printStackTrace();
+			// TODO Write the error in errno
+			return EOF;
+		}
+	}
+
+	public long _setjmp(long jumpBufferAddress) {
+		System.out.println("[WARNING] _setjmp: not implemented yet");
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public long setjmp(long jumpBufferAddress) {
+		return _setjmp(jumpBufferAddress);
+	}
+
+	public void _longjmp(long jumpBufferAddress, int val) {
+		System.out.println("[WARNING] _longjmp: not implemented yet");
+		// TODO Auto-generated method stub
+	}
+
+	public void longjmp(long jumpBufferAddress, int val) {
+		_longjmp(jumpBufferAddress, val);
 	}
 
 	public void abort() {
@@ -400,26 +591,14 @@ public class Runtime {
 		System.exit(v);
 	}
 
-	public long fprintf(long mir_read_long, Object... args) {
-		// TODO Auto-generated method stub
-		return 0;
+	public float ceilf(float value) {
+		float f = (float) Math.ceil(value);
+		return f;
 	}
-	
-	public long _setjmp(long jumpBufferAddress) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-	
-	public long setjmp(long jumpBufferAddress) {
-		return _setjmp(jumpBufferAddress);
-	}
-	
-	public void _longjmp(long jumpBufferAddress, int val) {
-		// TODO Auto-generated method stub
-	}
-	
-	public void longjmp(long jumpBufferAddress, int val) {
-		_longjmp(jumpBufferAddress, val);
+
+	public float roundf(float value) {
+		float f = (float) Math.round(value);
+		return f;
 	}
 
 //	public long strtol(long stringAddr, long endAddr, int base) {

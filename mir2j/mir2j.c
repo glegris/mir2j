@@ -246,7 +246,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
       fprintf (f, "%s", MIR_reg_name (ctx, op.u.mem.base, curr_func));
     } else {
       fprintf (f, "mir_read_");
-      out_type (f, op.u.mem.type);
+      out_mangled_type (f, op.u.mem.type);
       fprintf (f, "(");
       out_op_mem_address (ctx, f, op);
       fprintf (f, ")");
@@ -327,7 +327,7 @@ static void out_op2 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str)
   //printf("out_op2: mode=%d\n", ops[1].mode);
   if (ops[0].mode == MIR_OP_MEM) {
     fprintf (f, "mir_write_");
-    out_type (f, ops[0].u.mem.type);
+    out_mangled_type (f, ops[0].u.mem.type);
     fprintf (f, "(");
     out_op_mem_address(ctx, f, ops[0]);
     fprintf (f, ", ");
@@ -595,6 +595,7 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     }
     out_jmp (ctx, f, ops[0]); 
     fprintf (f, "\n");
+    is_in_dead_code = TRUE;
     break;
   case MIR_BT:
     fprintf (f, "if (((long) "); // int64_t
@@ -939,13 +940,20 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
       return;
   }
   if (item->item_type == MIR_bss_item) {
-    char* bss_name = get_mangled_symbol_name(item->u.bss->name);
-    fprintf(f, "long %s = mir_allocate(%d);\n", bss_name, item->u.bss->len);
+    fprintf(f, "long ");
+    if (item->u.bss->name != NULL) {
+      char* bss_name = get_mangled_symbol_name(item->u.bss->name);
+      fprintf(f, "%s", bss_name);
+    } else {
+      fprintf(f, "unused_data_addr_%d", unused_data_addr_count++);
+    }
+    fprintf(f, " = mir_allocate(%d);\n", item->u.bss->len);
     return;
   }
 
   curr_func = item->u.func;
   char* func_name = (char*) curr_func->name;
+  //printf("[MIR2J_DEBUG] function name:%s\n", func_name);
 
   /*------------------------------------
     First pass to analyze the function
