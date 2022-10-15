@@ -597,6 +597,22 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     fprintf (f, "\n");
     is_in_dead_code = TRUE;
     break;
+  case MIR_SWITCH:
+    fprintf (f, "switch((int) ");
+    out_op(ctx, f, ops[0]);
+    fprintf (f, ") {\n");
+    for (int i = 0; i < insn->nops - 1; i++) {
+       fprintf (f, "  case %d: ", i);
+       fprintf (f, "mir_label = ");
+       out_op(ctx, f, ops[i + 1]);
+       fprintf (f, "; break;\n");
+    }
+    fprintf (f, "  }\n");
+    fprintf (f, "  break;");
+    fprintf (f, " // End of switch(");
+    out_op(ctx, f, ops[0]);
+    fprintf (f, ")\n");
+    break; 
   case MIR_BT:
     fprintf (f, "if (((long) "); // int64_t
     out_op (ctx, f, ops[1]);
