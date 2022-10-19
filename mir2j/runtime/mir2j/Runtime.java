@@ -18,10 +18,13 @@ public class Runtime {
 	private int nextfunctionPointer = functionSpaceStartAddress;
 	private int heapStartAddress = functionSpaceStartAddress + functionSpaceSize;
 	private TreeMap<Integer, MemoryBlock> memoryBlockMap = new TreeMap<>();
+	private TreeMap<Integer, VarArgs> varArgsMap = new TreeMap<>();
 	private HashMap<String, Integer> stringMap = new HashMap<>();
 	private FunctionMap functionMap = new FunctionMap();
 
-	public static int stdin = 0;
+	private static final int VA_ARG_BUFFER_SIZE = 8;
+
+	public static final int stdin = 0;
 	public static int stdout = 1;
 	public static int stderr = 2;
 	public static int EOF = -1;
@@ -234,11 +237,11 @@ public class Runtime {
 		//System.out.println("readbyte(" + addr + "): " + b);
 		return l;
 	}
-	
+
 	public void mir_write_ulong(long longAddr, long l) {
 		mir_write_long(longAddr, l);
 	}
-	
+
 	public long mir_read_ulong(long longAddr) {
 		return mir_read_long(longAddr);
 	}
@@ -347,6 +350,71 @@ public class Runtime {
 		long addr = mir_allocate(8);
 		mir_write_double(addr, v);
 		return addr;
+	}
+
+	public void mir_va_start(long vaListAddr, Object[] mir_var_args) {
+		VarArgs varArgs = varArgsMap.get((int) vaListAddr);
+		if (varArgs == null) {
+			long argDataAddr = mir_allocate(VA_ARG_BUFFER_SIZE);
+			varArgs = new VarArgs(mir_var_args, argDataAddr);
+			varArgsMap.put((int) vaListAddr, varArgs);
+		} else {
+			varArgs.reset(mir_var_args, varArgs.getArgDataAddr());
+		}
+	}
+	
+	/* FIXME: va_end is not emitted by c2mir ! 
+	 * TODO: Temporary fix to call mir_va_end when the last arg is requested 
+	 */
+	public void mir_va_end(long vaListAddr) {
+		varArgsMap.remove((int) vaListAddr);
+	}
+
+	public VarArgs mir_va_get_wrapper(long vaListAddr) {
+		VarArgs varArgs = varArgsMap.get((int) vaListAddr);
+		return varArgs;
+	}
+
+	public class VarArgs {
+		private Object[] args;
+		private long argDataAddr;
+		private int index;
+
+		public VarArgs(Object[] args, long argDataAddr) {
+			reset(args, argDataAddr);
+		}
+
+		private Object nextArg() {
+			Object arg = args[index++];
+			return arg;
+		}
+
+		public long nextLong() {
+			Object arg = nextArg();
+			long l = ((Number) arg).longValue();
+			return l;
+		}
+
+		public double nextDouble() {
+			Object arg = nextArg();
+			double d = ((Number) arg).doubleValue();
+			return d;
+		}
+
+		public long getArgDataAddr() {
+			return argDataAddr;
+		}
+
+		public Object[] getArgs() {
+			return args;
+		}
+		
+		public void reset(Object[] args, long argDataAddr) {
+			this.args = args;
+			this.argDataAddr = argDataAddr;
+			this.index = 0;
+		}
+
 	}
 
 	public long mir_get_string_ptr(String s) {
@@ -526,7 +594,7 @@ public class Runtime {
 		// TODO Auto-generated method stub
 		return 0;
 	}
-	
+
 	private String convertPrintfFormat(String format) {
 		format = format.replaceAll("%i", "%d");
 		return format;
@@ -547,13 +615,12 @@ public class Runtime {
 	}
 
 	public long vsprintf(long bufferAddr, long stringAddr, long va_listAddress) {
-		System.out.println("[WARNING] vsprintf: not implemented yet");
+		//System.out.println("[WARNING] vsprintf: not implemented yet");
 		String inputString = getStringFromMemory(stringAddr);
 		try {
 			String convertedFormat = convertPrintfFormat(inputString);
-			// TODO Get arguments from the given va_list
-			//String outputString = String.format(convertedFormat, args);
-			String outputString = convertedFormat;
+			VarArgs varArgs = mir_va_get_wrapper(va_listAddress);
+			String outputString = String.format(convertedFormat, varArgs.getArgs());
 			writeCStringInMemoryFromJavaString(bufferAddr, outputString.getBytes());
 			return outputString.length();
 		} catch (IllegalFormatException e) {

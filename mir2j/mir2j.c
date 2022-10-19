@@ -784,49 +784,43 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     is_in_dead_code = FALSE;
     break;
   case MIR_VA_START:
-    // Override the va_list allocation to create our own structure
+    fprintf (f, "mir_va_start(");
     out_op (ctx, f, insn->ops[0]);
-    fprintf (f, " = mir_allocate(20); ");
-    // Set argument index (addr + 16) to 0
-    fprintf (f, "mir_write_int(");
-    out_op (ctx, f, insn->ops[0]);
-    fprintf (f, " + 16, 0); // va_start\n");
+    fprintf (f, ", mir_var_args);\n");
     break;
   case MIR_VA_ARG: 
     {
-    fprintf (f, "{ // va_arg\n");
     int var_type = insn->ops[2].u.mem.type;
+    fprintf (f, "{ // va_arg(");
+    out_type(f, var_type);
+    fprintf (f, ")\n");
+    fprintf (f, "  VarArgs varArgs = mir_va_get_wrapper(");
+    out_op (ctx, f, insn->ops[1]);
+    fprintf (f, ");\n  ");
     out_op (ctx, f, insn->ops[0]);
-    fprintf (f, " = ");
-    out_op (ctx, f, insn->ops[1]);
-    fprintf (f, ";\n");
-    // Read the argument index at addr + 16
-    fprintf (f, "int mir_va_index = mir_read_int(");
-    out_op (ctx, f, insn->ops[1]);
-    fprintf (f, " + 16);\n");
-    // Write the argument value at addr
-    fprintf (f, "mir_write_");
+    fprintf (f, " = varArgs.getArgDataAddr();\n");
+    
+    if (var_type == MIR_T_F || var_type == MIR_T_D || var_type == MIR_T_LD) {
+      fprintf (f, "  double arg_value = varArgs.nextDouble");	
+    } else {
+      fprintf (f, "  long arg_value = varArgs.nextLong");	
+    } 
+    fprintf (f, "();\n");	  
+    fprintf (f, "  mir_write_");
     out_mangled_type(f, var_type);
     fprintf (f, "(");
-    out_op (ctx, f, insn->ops[1]);
+    out_op (ctx, f, insn->ops[0]);
     fprintf (f, ", (");
     out_type(f, var_type);
-    fprintf (f, ") ((Number) mir_var_args[mir_va_index++]).");
-    if (var_type == MIR_T_F || var_type == MIR_T_D || var_type == MIR_T_LD) {
-      fprintf (f, "doubleValue()");	
-    } else {
-      fprintf (f, "longValue()");	
-    }
-    fprintf (f, ");\n");
-    // Write the incremented argument index at addr + 16
-    fprintf (f, "mir_write_int(");
-    out_op (ctx, f, insn->ops[1]);
-    fprintf (f, " + 16, mir_va_index);\n");
-    fprintf (f, "} // end of va_arg\n");
+    fprintf (f, ") arg_value);\n");
+    fprintf (f, "  } // end of va_arg\n");    
     }
     break;
   case MIR_VA_END:
-    // Do nothing
+    // FIXME c2mir doesn't emit va_end currently
+    fprintf (f, "mir_va_end(");
+    out_op (ctx, f, insn->ops[0]);
+    fprintf (f, ");\n");
     break;
   case MIR_VA_BLOCK_ARG:
    fprintf (f, "// Instruction MIR_VA_BLOCK_ARG is not supported yet\n");
@@ -835,6 +829,7 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   default: 
     fprintf (f, "// Unknown instruction code=%d\n", insn->code);
     mir_assert (FALSE);
+    exit(1);
   }
 }
 
