@@ -8,12 +8,15 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class Runtime {
+	
+	private static final int VA_ARG_BUFFER_SIZE = 8;
 
 	private byte[] memory = new byte[5000000];
 
 	private int stackPosition = 8; // Do not start at 0 to avoid weird bugs caused by comparisons with 0
 	private int maxStackSize = 1000000;
-	private int functionSpaceStartAddress = maxStackSize;
+	private int varArgsBufferAddress = maxStackSize;
+	private int functionSpaceStartAddress = varArgsBufferAddress + VA_ARG_BUFFER_SIZE;
 	private int functionSpaceSize = 1000;
 	private int nextfunctionPointer = functionSpaceStartAddress;
 	private int heapStartAddress = functionSpaceStartAddress + functionSpaceSize;
@@ -21,8 +24,6 @@ public class Runtime {
 	private TreeMap<Integer, VarArgs> varArgsMap = new TreeMap<>();
 	private HashMap<String, Integer> stringMap = new HashMap<>();
 	private FunctionMap functionMap = new FunctionMap();
-
-	private static final int VA_ARG_BUFFER_SIZE = 8;
 
 	public static final int stdin = 0;
 	public static int stdout = 1;
@@ -355,11 +356,10 @@ public class Runtime {
 	public void mir_va_start(long vaListAddr, Object[] mir_var_args) {
 		VarArgs varArgs = varArgsMap.get((int) vaListAddr);
 		if (varArgs == null) {
-			long argDataAddr = mir_allocate(VA_ARG_BUFFER_SIZE);
-			varArgs = new VarArgs(mir_var_args, argDataAddr);
+			varArgs = new VarArgs(vaListAddr, mir_var_args);
 			varArgsMap.put((int) vaListAddr, varArgs);
 		} else {
-			varArgs.reset(mir_var_args, varArgs.getArgDataAddr());
+			varArgs.reset(mir_var_args);
 		}
 	}
 	
@@ -376,42 +376,55 @@ public class Runtime {
 	}
 
 	public class VarArgs {
+		private int vaListAddr;
 		private Object[] args;
-		private long argDataAddr;
 		private int index;
 
-		public VarArgs(Object[] args, long argDataAddr) {
-			reset(args, argDataAddr);
+		public VarArgs(long vaListAddr, Object[] args) {
+			this.vaListAddr = (int) vaListAddr;
+			reset(args);
 		}
 
 		private Object nextArg() {
 			Object arg = args[index++];
 			return arg;
 		}
+		
+		/* FIXME: Temporary fix until va_end is emitted: clean context when the last arg is requested */
+		private void cleanIfTerminated() {
+			if (index == args.length) {
+				varArgsMap.remove(vaListAddr);
+			} else if (index > args.length) {
+				throw new IllegalStateException();
+			}
+		}
 
 		public long nextLong() {
 			Object arg = nextArg();
 			long l = ((Number) arg).longValue();
+			cleanIfTerminated();
 			return l;
 		}
 
 		public double nextDouble() {
 			Object arg = nextArg();
 			double d = ((Number) arg).doubleValue();
+			cleanIfTerminated();
 			return d;
+		}
+		
+		public Object[] getAllArgs() {
+			index = args.length;
+			cleanIfTerminated();
+			return args;
 		}
 
 		public long getArgDataAddr() {
-			return argDataAddr;
-		}
-
-		public Object[] getArgs() {
-			return args;
+			return varArgsBufferAddress;
 		}
 		
-		public void reset(Object[] args, long argDataAddr) {
+		public void reset(Object[] args) {
 			this.args = args;
-			this.argDataAddr = argDataAddr;
 			this.index = 0;
 		}
 
@@ -620,7 +633,7 @@ public class Runtime {
 		try {
 			String convertedFormat = convertPrintfFormat(inputString);
 			VarArgs varArgs = mir_va_get_wrapper(va_listAddress);
-			String outputString = String.format(convertedFormat, varArgs.getArgs());
+			String outputString = String.format(convertedFormat, varArgs.getAllArgs());
 			writeCStringInMemoryFromJavaString(bufferAddr, outputString.getBytes());
 			return outputString.length();
 		} catch (IllegalFormatException e) {

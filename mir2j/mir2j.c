@@ -799,7 +799,6 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     fprintf (f, ");\n  ");
     out_op (ctx, f, insn->ops[0]);
     fprintf (f, " = varArgs.getArgDataAddr();\n");
-    
     if (var_type == MIR_T_F || var_type == MIR_T_D || var_type == MIR_T_LD) {
       fprintf (f, "  double arg_value = varArgs.nextDouble");	
     } else {
