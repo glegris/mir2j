@@ -36,10 +36,10 @@ Currently the code is in its early stages, but the sieve.c example can already b
 
 ## Issues
 
-When calling functions passing structures by value, the following behavior was observed:
+When calling functions passing structures by value, the following behavior has been observed:
 > If the size of the structure is less than 16 bytes, then c2mir generates functions which return 2 values of 8 bytes to avoid allocating a block of memory on the stack.
 
 > If the size of the structure is greater than 16 bytes, c2mir allocates a memory block on the stack in which the values of the structure are written.
 
-While this issue is not fixed, you have to modify your C source code so that structures are always larger than 16 bytes (ugly)
+Until this problem is fixed, you should modify your C source code so that structures are always larger than 16 bytes (ugly)
 
