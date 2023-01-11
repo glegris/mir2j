@@ -1,6 +1,6 @@
 # MIR2j Project
 
-The goal of this project is to make C applications/libraries or code that can be compiled with LLVM work in a JVM. There are already projects that do this:
+The goal of this project is to make C applications/libraries work in a JVM. There are already projects that do this:
 - [NestedVM ](http://nestedvm.ibex.org/) or [Cibyl](https://github.com/SimonKagstrom/cibyl)
 - [LLJVM-translator](https://github.com/maropu/lljvm-translator) (based on [LLJVM ](https://github.com/davidar/lljvm) by David Roberts)
 
