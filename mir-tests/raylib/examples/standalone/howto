@@ -1,0 +1,1 @@
+gcc -g -DRAYGUI_NO_ICONS -o standalone raygui_standalone.c -lm
