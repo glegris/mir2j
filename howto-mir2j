@@ -1,0 +1,18 @@
+./c2m -S sieve.c
+gcc -o sieve sieve.c && ./sieve
+make m2j > Main.java
+cp Main.java /shared/Development/eclipse-workspace/mir2j/src/
+
+
+./c2m -Imir2j/libc/includes -S mir2j/libc/libc.c
+
+
+Compile c2m
+-----------
+./c2m -S c2mir/c2mir.c mir.c c2mir/c2mir-driver.c
+./c2m -o c2mir.bmir c2mir.mir mir.mir c2mir-driver.mir 
+./c2m -S c2mir.bmir
+./c2m -S c2mir/c2mir.c mir.c c2mir/c2mir-driver.c && ./c2m -o c2mir.bmir c2mir.mir mir.mir c2mir-driver.mir && ./c2m -S c2mir.bmir
+
+
+./c2m -DRAYGUI_NO_ICONS -S /home/gl/Development/raylib/examples/standalone/raygui_standalone.c
