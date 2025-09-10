@@ -107,21 +107,47 @@ void test_static_functions() {
   test_check("Static functions #1", v == 145);	
 }
 
-int pointed_function(int input) {
+void pointed_function_void(int input) {
+  global_var_int += input;
+}
+
+int pointed_function_int(int input) {
   int v = input + 37;
   return v;
 }
 
-int pointed_function2(int input) {
+int pointed_function_int2(int input) {
   int v = input + 76;
   return v;
 }
 
-int call_pointed_function(int input, int (*pf)(int)) {
+float pointed_function_float(float input) {
+  float v = input / 2;
+  return v;
+}
+
+double pointed_function_double(double input) {
+  double v = input / 4;
+  return v;
+}
+
+void call_pointed_function_void(int input, void (*pf)(int)) {
+  pf(input);
+}
+
+int call_pointed_function_int(int input, int (*pf)(int)) {
   return pf(input);
 }
 
-static int call_static_pointed_function(int input, int (*pf)(int)) {
+static int call_static_pointed_function_int(int input, int (*pf)(int)) {
+  return pf(input);
+}
+
+float call_pointed_function_float(float input, float (*pf)(float)) {
+  return pf(input);
+}
+
+double call_pointed_function_double(float input, double (*pf)(double)) {
   return pf(input);
 }
 
@@ -144,15 +170,22 @@ void test_pointers() {
   test_check("Pointers #3 (Arithmetic)", *(a + 2) == 'c');
 
   int (*pf)(int);
-  pf = &pointed_function;
+  pf = &pointed_function_int;
   int v = pf(12);
-  pf = &pointed_function2;
+  pf = &pointed_function_int2;
   int v2 = pf(v);
   test_check("Pointers #4 (Function)", (v == 49) && (v2 == 125));
-  v2 = call_pointed_function(100, &pointed_function);
+  v2 = call_pointed_function_int(100, &pointed_function_int);
   test_check("Pointers #5 (Function)", (v2 == 137));
-  v2 = call_static_pointed_function(100, &pointed_function);
+  v2 = call_static_pointed_function_int(100, &pointed_function_int);
   test_check("Pointers #6 (Function)", (v2 == 137));
+  float f = call_pointed_function_float(2.5, &pointed_function_float);
+  test_check("Pointers #7 (Function)", (f == 1.25));
+  double d = call_pointed_function_double(10, &pointed_function_double);
+  test_check("Pointers #8 (Function)", (d == 2.5));
+  int last_global_var_int = global_var_int;
+  call_pointed_function_void(23, &pointed_function_void);
+  test_check("Pointers #9 (Function)", (global_var_int == (last_global_var_int + 23)));
 }
 
 struct pair get_pair(int a, int b) {

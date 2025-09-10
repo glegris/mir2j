@@ -496,23 +496,36 @@ public class Runtime {
 		functionAddress = methodHandle.getAddress();
 		return functionAddress;
 	}
+	
+	/* Call-through wrappers preserving floating return types */
+    private Object invoke(long functionAddr, Object... args) {
+        if (functionAddr < functionSpaceStartAddress || functionAddr > functionSpaceStartAddress + functionSpaceSize)
+            throw new RuntimeException("Bad function address: " + functionAddr);
+        MethodHandle methodHandle = functionMap.getMethodByAddress((int) functionAddr);
+        if (methodHandle == null)
+            throw new RuntimeException("Function at addr=" + functionAddr + " is not mapped.");
+        try {
+            return methodHandle.getMethod().invoke(this, args);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while calling function '" + methodHandle.getMethod().getName() + "' (addr=" + functionAddr + ")", e);
+        }
+    }
+    
+    public void mir_call_function_ret_void(long addr, Object... args) {
+        invoke(addr, args);
+    }
 
-	public long mir_call_function(long functionAddr, Object... args) {
-		if ((functionAddr < functionSpaceStartAddress) || (functionAddr > functionSpaceStartAddress + functionSpaceSize)) {
-			throw new RuntimeException("Bad function address: " + functionAddr);
-		}
-		MethodHandle methodHandle = functionMap.getMethodByAddress((int) functionAddr);
-		if (methodHandle == null) {
-			throw new RuntimeException("Function at addr=" + functionAddr + " is not mapped.");
-		}
-		try {
-			Object result = methodHandle.getMethod().invoke(this, args);
-			//System.out.println("result=" + result);
-			return ((Number) result).longValue();
-		} catch (Exception e) {
-			throw new RuntimeException("Error while calling function '" + methodHandle.getMethod().getName() + "' (addr=" + functionAddr + ")", e);
-		}
-	}
+    public long mir_call_function_ret_long(long addr, Object... args) {
+        return ((Number) invoke(addr, args)).longValue();
+    }
+
+    public double mir_call_function_ret_double(long addr, Object... args) {
+        return ((Number) invoke(addr, args)).doubleValue();
+    }
+
+    public float mir_call_function_ret_float(long addr, Object... args) {
+        return ((Number) invoke(addr, args)).floatValue();
+    }
 
 	public long memcpy(long destAddr, long srcAddr, long size) {
 		System.arraycopy(memory, (int) srcAddr, memory, (int) destAddr, (int) size);

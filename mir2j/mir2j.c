@@ -152,7 +152,7 @@ static void out_type (FILE *f, MIR_type_t t) {
   case MIR_T_F: fprintf (f, "float"); break;
   case MIR_T_D: fprintf (f, "double"); break;
   case MIR_T_LD: fprintf (f, "double"); break; // long double
-  case MIR_T_P: fprintf (f, "void *"); break;
+  case MIR_T_P: fprintf (f, "long"); break;
   case MIR_T_BLK:
   case MIR_T_BLK + 1:
   case MIR_T_BLK + 2:
@@ -206,7 +206,7 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
   case MIR_OP_UINT: fprintf (f, "%" PRIu64, op.u.u); break;
   case MIR_OP_FLOAT: fprintf (f, "%#.*gf", FLT_MANT_DIG, op.u.f); break;
   case MIR_OP_DOUBLE: fprintf (f, "%#.*g", DBL_MANT_DIG, op.u.d); break;
-  case MIR_OP_LDOUBLE: fprintf (f, "%#.*lgl", LDBL_MANT_DIG, op.u.d); break;
+  case MIR_OP_LDOUBLE: fprintf (f, "%#.*lgl", LDBL_MANT_DIG, op.u.ld); break;
   case MIR_OP_REF: {
     char* name = (char*) MIR_item_name (ctx, op.u.ref);
     char* mangled_name = get_mangled_symbol_name(name);
@@ -403,15 +403,34 @@ static void out_usop3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *st
   fprintf (f, ";\n");
 }
 
-static void out_usop3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
-  out_op (ctx, f, ops[0]);
-  fprintf (f, " = ((long) "); // int64_t
-  out_op (ctx, f, ops[1]);
-  fprintf (f, " %s (long) ", str); // int64_t
-  out_op (ctx, f, ops[2]);
-  fprintf (f, ") ? 1 : 0;\n");  
+/* Compare two 32-bit unsigned values and write 0/1 to dst */
+static void out_usop3_logic32 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *sign_test) {
+    // ops[0] = dst, ops[1] = a, ops[2] = b
+  // sign_test is one of "<", "<=", ">", ">=" applied to the compareUnsigned result vs 0
+  out_op(ctx, f, ops[0]);
+  fprintf(f, " = (Integer.compareUnsigned((int) ");
+  out_op(ctx, f, ops[1]);
+  fprintf(f, ", (int) ");
+  out_op(ctx, f, ops[2]);
+  fprintf(f, ") %s 0) ? 1 : 0;\n", sign_test);
 }
 
+static void out_uop3_logic64 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *cmp) {
+  out_op(ctx,f,ops[0]);
+  fprintf(f," = (Long.compareUnsigned((long) "); out_op(ctx,f,ops[1]);
+  fprintf(f,", (long) "); out_op(ctx,f,ops[2]); fprintf(f,") %s 0) ? 1 : 0;\n", cmp);
+}
+
+/* Set dst to 0/1 from a floating-point comparison */
+static void out_fcmp3_logic (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *op) {
+  /* ops[0] = dst, ops[1] = lhs, ops[2] = rhs */
+  out_op(ctx, f, ops[0]);
+  fprintf(f, " = (");
+  out_op(ctx, f, ops[1]);
+  fprintf(f, " %s ", op);
+  out_op(ctx, f, ops[2]);
+  fprintf(f, ") ? 1 : 0;\n");
+}
 
 static void out_jmp (MIR_context_t ctx, FILE *f, MIR_op_t label_op) {
   mir_assert (label_op.mode == MIR_OP_LABEL);
@@ -430,16 +449,6 @@ static void out_bcmp (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str
   fprintf (f, " }\n");
 }
 
-static void out_bucmp (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
-  fprintf (f, "if ((long) "); // uint64_t. FIXME: how to handle unsigned long ?
-  out_op (ctx, f, ops[1]);
-  fprintf (f, " %s (long) ", str); // uint64_t. FIXME: how to handle unsigned long ?
-  out_op (ctx, f, ops[2]);
-  fprintf (f, ") { ");
-  out_jmp (ctx, f, ops[0]);
-  fprintf (f, " }\n");
-}
-
 static void out_bscmp (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
   fprintf (f, "if ((int) "); // int32_t
   out_op (ctx, f, ops[1]);
@@ -450,14 +459,18 @@ static void out_bscmp (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *st
   fprintf (f, " }\n");
 }
 
-static void out_buscmp (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
-  fprintf (f, "if ((long) "); // uint32_t
-  out_op (ctx, f, ops[1]);
-  fprintf (f, " %s (long) ", str);  // uint32_t
-  out_op (ctx, f, ops[2]);
-  fprintf (f, ") { ");
-  out_jmp (ctx, f, ops[0]);
-  fprintf (f, " }\n");
+/* 64-bit unsigned branch: if (cmpUnsigned(a,b) op 0) goto L; */
+static void out_bucmp64 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *op) {
+  fprintf(f,"if (Long.compareUnsigned((long) "); out_op(ctx,f,ops[1]);
+  fprintf(f,", (long) "); out_op(ctx,f,ops[2]);
+  fprintf(f,") %s 0) { ", op); out_jmp(ctx,f,ops[0]); fprintf(f," }\n");
+}
+
+/* 32-bit unsigned branch */
+static void out_buscmp32 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *op) {
+  fprintf(f,"if (Integer.compareUnsigned((int) "); out_op(ctx,f,ops[1]);
+  fprintf(f,", (int) "); out_op(ctx,f,ops[2]);
+  fprintf(f,") %s 0) { ", op); out_jmp(ctx,f,ops[0]); fprintf(f," }\n");
 }
 
 static void out_fop3 (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *str) {
@@ -479,6 +492,85 @@ static void out_bfcmp (MIR_context_t ctx, FILE *f, MIR_op_t *ops, const char *st
   fprintf (f, " }\n");
 }
 
+/* Emit: dst = (long) Long.divideUnsigned((long)a, (long)b); */
+static void out_udiv64 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  /* ops[0] = dst, ops[1] = lhs, ops[2] = rhs */
+  out_op(ctx, f, ops[0]); fprintf(f, " = (long) Long.divideUnsigned((long) ");
+  out_op(ctx, f, ops[1]); fprintf(f, ", (long) "); out_op(ctx, f, ops[2]);
+  fprintf(f, ");\n");
+}
+
+/* Emit: dst = (long) Long.remainderUnsigned((long)a, (long)b); */
+static void out_umod64 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx, f, ops[0]); fprintf(f, " = (long) Long.remainderUnsigned((long) ");
+  out_op(ctx, f, ops[1]); fprintf(f, ", (long) "); out_op(ctx, f, ops[2]);
+  fprintf(f, ");\n");
+}
+
+/* Emit: dst = (long) Integer.divideUnsigned((int)a, (int)b); */
+static void out_udiv32 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx, f, ops[0]); fprintf(f, " = (long) Integer.divideUnsigned((int) ");
+  out_op(ctx, f, ops[1]); fprintf(f, ", (int) "); out_op(ctx, f, ops[2]);
+  fprintf(f, ");\n");
+}
+
+/* Emit: dst = (long) Integer.remainderUnsigned((int)a, (int)b); */
+static void out_umod32 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx, f, ops[0]); fprintf(f, " = (long) Integer.remainderUnsigned((int) ");
+  out_op(ctx, f, ops[1]); fprintf(f, ", (int) "); out_op(ctx, f, ops[2]);
+  fprintf(f, ");\n");
+}
+
+/* Zero-extend 8-bit to 64-bit */
+static void out_uext8 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx,f,ops[0]); fprintf(f," = (((long) (int) ");
+  out_op(ctx,f,ops[1]); fprintf(f,") & 0xFFL);\n");
+}
+
+/* Zero-extend 16-bit to 64-bit */
+static void out_uext16 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx,f,ops[0]); fprintf(f," = (((long) (int) ");
+  out_op(ctx,f,ops[1]); fprintf(f,") & 0xFFFFL);\n");
+}
+
+/* Zero-extend 32-bit to 64-bit */
+static void out_uext32 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx,f,ops[0]); 
+  fprintf(f," = (((long) "); 
+  out_op(ctx,f,ops[1]);
+  fprintf(f, ") & 0xFFFFFFFFL);\n"); 
+}
+
+/* 32-bit logical right shift: dst = (long)(((int)lhs) >>> (int)rhs) */
+static void out_urshs32 (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx,f,ops[0]); fprintf(f," = (long)(((int) ");
+  out_op(ctx,f,ops[1]); fprintf(f,") >>> (int) ");
+  out_op(ctx,f,ops[2]); fprintf(f," );\n");
+}
+
+/* Emit: if (((int) v) != 0) { goto L; } */
+static void out_bts (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  /* ops[0] = label, ops[1] = value */
+  fprintf(f, "if (((int) "); out_op(ctx, f, ops[1]); fprintf(f, " != 0)) { ");
+  out_jmp(ctx, f, ops[0]); fprintf(f, " }\n");
+}
+
+/* Emit: if (((int) v) == 0) { goto L; } */
+static void out_bfs (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  fprintf(f, "if (((int) "); out_op(ctx, f, ops[1]); fprintf(f, " == 0)) { ");
+  out_jmp(ctx, f, ops[0]); fprintf(f, " }\n");
+}
+
+/* Emit: saved = mir_get_stack_position(); */
+static void out_bstart (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  out_op(ctx, f, ops[0]); fprintf(f, " = mir_get_stack_position();\n");
+}
+
+/* Emit: mir_set_stack_position(saved); */
+static void out_bend (MIR_context_t ctx, FILE *f, MIR_op_t *ops) {
+  fprintf(f, "mir_set_stack_position("); out_op(ctx, f, ops[0]); fprintf(f, ");\n");
+}
+
 static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   MIR_op_t *ops = insn->ops;
 
@@ -486,13 +578,14 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   switch (insn->code) {
   case MIR_MOV:
   case MIR_FMOV:
-  case MIR_DMOV: out_op2 (ctx, f, ops, NULL); break;
+  case MIR_DMOV: 
+  case MIR_LDMOV: out_op2 (ctx, f, ops, NULL); break;
   case MIR_EXT8: out_op2 (ctx, f, ops, "(long) (byte)"); break; // (int64_t) (int8_t) 
   case MIR_EXT16: out_op2 (ctx, f, ops, "(long) (short)"); break; // (int64_t) (int16_t) 
   case MIR_EXT32: out_op2 (ctx, f, ops, "(long) (int)"); break; // (int64_t) (int32_t)
-  case MIR_UEXT8: out_op2 (ctx, f, ops, "(long) (short)"); break; // (int64_t) (uint8_t)
-  case MIR_UEXT16: out_op2 (ctx, f, ops, "(long) (int)"); break; // (int64_t) (uint16_t)
-  case MIR_UEXT32: out_op2 (ctx, f, ops, "(long)"); break; // (int64_t) (uint32_t)
+  case MIR_UEXT8: out_uext8 (ctx,f,ops); break; // (int64_t) (uint8_t)
+  case MIR_UEXT16: out_uext16(ctx,f,ops); break; // (int64_t) (uint16_t)
+  case MIR_UEXT32: out_uext32 (ctx, f, ops); break; // (int64_t) (uint32_t)
   case MIR_F2I:
   case MIR_D2I:
   case MIR_LD2I: out_op2 (ctx, f, ops, "(long)"); break; // int64_t 
@@ -518,15 +611,15 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_MUL: out_op3 (ctx, f, ops, "*"); break;
   case MIR_DIV: out_op3 (ctx, f, ops, "/"); break;
   case MIR_MOD: out_op3 (ctx, f, ops, "%"); break;
-  case MIR_UDIV: out_uop3 (ctx, f, ops, "/"); break;
-  case MIR_UMOD: out_uop3 (ctx, f, ops, "%"); break;
+  case MIR_UDIV:  out_udiv64 (ctx, f, ops); break;
+  case MIR_UMOD:  out_umod64 (ctx, f, ops); break;
   case MIR_ADDS: out_sop3 (ctx, f, ops, "+"); break;
   case MIR_SUBS: out_sop3 (ctx, f, ops, "-"); break;
   case MIR_MULS: out_sop3 (ctx, f, ops, "*"); break;
   case MIR_DIVS: out_sop3 (ctx, f, ops, "/"); break;
   case MIR_MODS: out_sop3 (ctx, f, ops, "%"); break;
-  case MIR_UDIVS: out_usop3 (ctx, f, ops, "/"); break;
-  case MIR_UMODS: out_usop3 (ctx, f, ops, "%"); break;
+  case MIR_UDIVS: out_udiv32 (ctx, f, ops); break;
+  case MIR_UMODS: out_umod32 (ctx, f, ops); break;
   case MIR_FADD:
   case MIR_DADD:
   case MIR_LDADD: out_fop3 (ctx, f, ops, "+"); break;
@@ -547,10 +640,10 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_XORS: out_sop3 (ctx, f, ops, "^"); break;
   case MIR_LSH: out_op3 (ctx, f, ops, "<<"); break;
   case MIR_RSH: out_op3 (ctx, f, ops, ">>"); break;
-  case MIR_URSH: out_uop3 (ctx, f, ops, ">>"); break;
+  case MIR_URSH: out_uop3 (ctx, f, ops, ">>>"); break;
   case MIR_LSHS: out_sop3 (ctx, f, ops, "<<"); break;
   case MIR_RSHS: out_sop3 (ctx, f, ops, ">>"); break;
-  case MIR_URSHS: out_usop3 (ctx, f, ops, ">>"); break;
+  case MIR_URSHS: out_urshs32 (ctx, f, ops); break;
   case MIR_EQ: out_op3_logic (ctx, f, ops, "=="); break;
   case MIR_NE: out_op3_logic (ctx, f, ops, "!="); break;
   case MIR_LT: out_op3_logic (ctx, f, ops, "<"); break;
@@ -563,32 +656,32 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_LES: out_sop3_logic (ctx, f, ops, "<="); break;
   case MIR_GTS: out_sop3_logic (ctx, f, ops, ">"); break;
   case MIR_GES: out_sop3_logic (ctx, f, ops, ">="); break;
-  case MIR_ULT: out_uop3 (ctx, f, ops, "<"); break;
-  case MIR_ULE: out_uop3 (ctx, f, ops, "<="); break;
-  case MIR_UGT: out_uop3 (ctx, f, ops, ">"); break;
-  case MIR_UGE: out_uop3 (ctx, f, ops, ">"); break;
-  case MIR_ULTS: out_usop3_logic (ctx, f, ops, "<"); break;
-  case MIR_ULES: out_usop3_logic (ctx, f, ops, "<="); break;
-  case MIR_UGTS: out_usop3_logic (ctx, f, ops, ">"); break;
-  case MIR_UGES: out_usop3_logic (ctx, f, ops, ">="); break;
+  case MIR_ULT: out_uop3_logic64(ctx,f,ops,"<");  break;
+  case MIR_ULE: out_uop3_logic64(ctx,f,ops,"<="); break;
+  case MIR_UGT: out_uop3_logic64(ctx,f,ops,">");  break;
+  case MIR_UGE: out_uop3_logic64(ctx,f,ops,">="); break;
+  case MIR_ULTS: out_usop3_logic32 (ctx, f, ops, "<"); break;
+  case MIR_ULES: out_usop3_logic32 (ctx, f, ops, "<="); break;
+  case MIR_UGTS: out_usop3_logic32 (ctx, f, ops, ">"); break;
+  case MIR_UGES: out_usop3_logic32 (ctx, f, ops, ">="); break;
   case MIR_FEQ:
   case MIR_DEQ:
-  case MIR_LDEQ: out_fop3 (ctx, f, ops, "=="); break;
+  case MIR_LDEQ: out_fcmp3_logic (ctx, f, ops, "=="); break;
   case MIR_FNE:
   case MIR_DNE:
-  case MIR_LDNE: out_fop3 (ctx, f, ops, "!="); break;
+  case MIR_LDNE: out_fcmp3_logic (ctx, f, ops, "!="); break;
   case MIR_FLT:
   case MIR_DLT:
-  case MIR_LDLT: out_fop3 (ctx, f, ops, "<"); break;
+  case MIR_LDLT: out_fcmp3_logic (ctx, f, ops, "<");  break;
   case MIR_FLE:
   case MIR_DLE:
-  case MIR_LDLE: out_fop3 (ctx, f, ops, "<="); break;
+  case MIR_LDLE: out_fcmp3_logic (ctx, f, ops, "<="); break;
   case MIR_FGT:
   case MIR_DGT:
-  case MIR_LDGT: out_fop3 (ctx, f, ops, ">"); break;
+  case MIR_LDGT: out_fcmp3_logic (ctx, f, ops, ">");  break;
   case MIR_FGE:
   case MIR_DGE:
-  case MIR_LDGE: out_fop3 (ctx, f, ops, ">="); break;
+  case MIR_LDGE: out_fcmp3_logic (ctx, f, ops, ">="); break;
   case MIR_JMP: 
     if (is_in_dead_code) {
       fprintf (f, "// Dead code: ");
@@ -627,7 +720,8 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     out_jmp (ctx, f, ops[0]);
     fprintf (f, " }\n");
     break;
-    /* ??? case MIR_BTS: case MIR_BFS: */
+  case MIR_BTS: out_bts (ctx, f, ops); break;
+  case MIR_BFS: out_bfs (ctx, f, ops); break;
   case MIR_BEQ: out_bcmp (ctx, f, ops, "=="); break;
   case MIR_BNE: out_bcmp (ctx, f, ops, "!="); break;
   case MIR_BLT: out_bcmp (ctx, f, ops, "<"); break;
@@ -640,14 +734,14 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_BLES: out_bscmp (ctx, f, ops, "<="); break;
   case MIR_BGTS: out_bscmp (ctx, f, ops, ">"); break;
   case MIR_BGES: out_bscmp (ctx, f, ops, ">="); break;
-  case MIR_UBLT: out_bucmp (ctx, f, ops, "<"); break;
-  case MIR_UBLE: out_bucmp (ctx, f, ops, "<="); break;
-  case MIR_UBGT: out_bucmp (ctx, f, ops, ">"); break;
-  case MIR_UBGE: out_bucmp (ctx, f, ops, ">="); break;
-  case MIR_UBLTS: out_buscmp (ctx, f, ops, "<"); break;
-  case MIR_UBLES: out_buscmp (ctx, f, ops, "<="); break;
-  case MIR_UBGTS: out_buscmp (ctx, f, ops, ">"); break;
-  case MIR_UBGES: out_buscmp (ctx, f, ops, ">="); break;
+  case MIR_UBLT:  out_bucmp64 (ctx, f, ops, "<");  break;
+  case MIR_UBLE:  out_bucmp64 (ctx, f, ops,"<="); break;
+  case MIR_UBGT:  out_bucmp64 (ctx, f, ops, ">");  break;
+  case MIR_UBGE:  out_bucmp64 (ctx, f, ops, ">="); break;
+  case MIR_UBLTS: out_buscmp32(ctx, f, ops, "<");  break;
+  case MIR_UBLES: out_buscmp32(ctx, f, ops, "<="); break;
+  case MIR_UBGTS: out_buscmp32(ctx, f, ops, ">");  break;
+  case MIR_UBGES: out_buscmp32(ctx, f, ops, ">="); break;
   case MIR_FBEQ:
   case MIR_DBEQ:
   case MIR_LDBEQ: out_bfcmp (ctx, f, ops, "=="); break;
@@ -676,6 +770,8 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
   case MIR_INLINE: {
     MIR_proto_t proto;
     size_t start = 2;
+    int has_result = 0;
+    MIR_type_t rt = MIR_T_I64; // default
 
     mir_assert (insn->nops >= 2 && ops[0].mode == MIR_OP_REF
                 && ops[0].u.ref->item_type == MIR_proto_item);
@@ -687,23 +783,36 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
       out_op (ctx, f, ops[2]);
       fprintf (f, " = ");
       start = 3;
+      rt = proto->res_types[0];
+      has_result = 1;
     }
     //fprintf (f, "((%s) ", proto->name);
     //printf(" (CALL: mode=%d) ", ops[1].mode);
     //int number_of_args = insn->nops - start;
     if ((ops[1].mode == MIR_OP_REG)) { // && (number_of_args > 0)) {
-      fprintf (f, "mir_call_function(");	
-      out_op (ctx, f, ops[1]);
-      fprintf (f, ", ");
+        // Indirect call through function pointer
+        if (!has_result) {
+            fprintf (f, "mir_call_function_ret_void(");
+        } else if (rt == MIR_T_F) {
+            fprintf (f, "mir_call_function_ret_float(");
+        } else if (rt == MIR_T_D) {
+            fprintf (f, "mir_call_function_ret_double(");
+        } else {
+            fprintf (f, "mir_call_function_ret_long(");
+        }
+        out_op (ctx, f, ops[1]);
+        fprintf (f, ", ");
     } else {
+      // Direct call path
       out_op (ctx, f, ops[1]);
       fprintf (f, "(");	
     }
 
+    // Emit arguments
     int arg_number = VARR_LENGTH (MIR_var_t, proto->args);
     for (size_t i = start; i < insn->nops; i++) {
       if (i != start) fprintf (f, ", ");
-	  int arg_index = i -start;
+	  int arg_index = (int) (i - start);
 	  if (arg_index < arg_number) {
 	    MIR_var_t var = VARR_GET (MIR_var_t, proto->args, arg_index);
 	    fprintf (f, "(");
@@ -778,6 +887,8 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     fprintf (f, ";\n");
     is_in_dead_code = TRUE;
     break;
+  case MIR_BSTART: out_bstart(ctx, f, ops); break;
+  case MIR_BEND:   out_bend  (ctx, f, ops); break;
   case MIR_LABEL:
     mir_assert (ops[0].mode == MIR_OP_INT);
     fprintf (f, "case %" PRId64 ":\n", ops[0].u.i);
@@ -823,7 +934,14 @@ static void out_insn (MIR_context_t ctx, FILE *f, MIR_insn_t insn) {
     break;
   case MIR_VA_BLOCK_ARG:
    fprintf (f, "// Instruction MIR_VA_BLOCK_ARG is not supported yet\n");
-   exit(1); 
+   exit(1);
+   /* result addr := buffer; copy next block argument of given size there */
+   // fprintf(f, "{ // va_block_arg\n  ");
+   // out_op(ctx,f,ops[0]); fprintf(f," = "); /* result receives a writable buffer addr */
+   // fprintf(f, "mir_va_get_wrapper("); out_op(ctx,f,ops[1]); fprintf(f, ").getArgDataAddr();\n  ");
+   // fprintf(f, "long __src = mir_va_get_wrapper("); out_op(ctx,f,ops[1]); fprintf(f, ").nextLong();\n  ");
+   // fprintf(f, "memcpy("); out_op(ctx,f,ops[0]); fprintf(f, ", __src, ");
+   // out_op(ctx,f,ops[2]); fprintf(f, ");\n}\n"); 
    break;
   default: 
     fprintf (f, "// Unknown instruction code=%d\n", insn->code);
