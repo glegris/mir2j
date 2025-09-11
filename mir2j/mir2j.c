@@ -1,5 +1,5 @@
-/* This file is a part of MIR project.
-   Copyright (C) 2018-2021 Vladimir Makarov <vmakarov.gcc@gmail.com>.
+/* This file is a part of MIR2J project.
+   Copyright (C) 2023-2025 Guillaume Legris
 */
 
 #include "mir2j.h"
@@ -1173,6 +1173,27 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   is_in_dead_code = FALSE;
 }
 
+static void MIR_all_modules2j (MIR_context_t ctx, FILE *f) {
+  create_symbol_table();
+
+  fprintf(f, "import mir2j.Runtime;\n\n");
+  fprintf(f, "public class Main extends Runtime {\n\n");
+
+  for (MIR_module_t m = DLIST_HEAD (MIR_module_t, *MIR_get_module_list (ctx));
+       m != NULL;
+       m = DLIST_NEXT (MIR_module_t, m)) {
+    for (MIR_item_t it = DLIST_HEAD (MIR_item_t, m->items);
+         it != NULL;
+         it = DLIST_NEXT (MIR_item_t, it)) {
+      out_item (ctx, f, it);
+    }
+  }
+
+  fprintf(f, "} // End of class Main\n");
+  destroy_symbol_table();
+}
+
+/*
 void MIR_module2j (MIR_context_t ctx, FILE *f, MIR_module_t m) {
   create_symbol_table();
 
@@ -1188,6 +1209,7 @@ void MIR_module2j (MIR_context_t ctx, FILE *f, MIR_module_t m) {
 
   destroy_symbol_table();
 }
+*/
 
 /* ------------------------- Small test example ------------------------- */
 #if defined(TEST_MIR2J)
@@ -1201,8 +1223,6 @@ int main (int argc, const char *argv[]) {
 
   create_mir_func_sieve (ctx, NULL, &m);
   MIR_module2j (ctx, stdout, m);
-  //m = create_hi_module (ctx);
-  //MIR_module2j (ctx, stdout, m);
   MIR_finish (ctx);
   return 0;
 }
@@ -1240,8 +1260,7 @@ int main (int argc, const char *argv[]) {
   MIR_scan_string (ctx, VARR_ADDR (char, input));
   
   //MIR_read (ctx, f);
-  m = DLIST_TAIL (MIR_module_t, *MIR_get_module_list (ctx));
-  MIR_module2j (ctx, stdout, m);
+  MIR_all_modules2j (ctx, stdout);
   MIR_finish (ctx);
   VARR_DESTROY (char, input);
   return 0;
