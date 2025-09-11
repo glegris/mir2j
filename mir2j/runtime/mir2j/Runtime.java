@@ -489,7 +489,10 @@ public class Runtime {
 				throw new RuntimeException("Can't allocate more function pointer");
 			}
 			functionAddress = nextfunctionPointer;
-			methodHandle = new MethodHandle(functionAddress, methods[targetMethodIndex]);
+			Method method = methods[targetMethodIndex];
+			// Allow reflective access to private methods
+			method.setAccessible(true);
+			methodHandle = new MethodHandle(functionAddress, method);
 			functionMap.put(functionName, methodHandle);
 			nextfunctionPointer++;
 		}
@@ -505,7 +508,8 @@ public class Runtime {
         if (methodHandle == null)
             throw new RuntimeException("Function at addr=" + functionAddr + " is not mapped.");
         try {
-            return methodHandle.getMethod().invoke(this, args);
+            Method m = methodHandle.getMethod();
+            return m.invoke(this, args);
         } catch (Exception e) {
             throw new RuntimeException("Error while calling function '" + methodHandle.getMethod().getName() + "' (addr=" + functionAddr + ")", e);
         }

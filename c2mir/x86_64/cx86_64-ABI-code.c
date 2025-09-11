@@ -131,6 +131,7 @@ static void update_last_qword_type (c2m_ctx_t c2m_ctx, struct type *type,
     qword_types[n - 1] = last_size <= 1 ? MIR_T_I8 : last_size <= 2 ? MIR_T_I16 : MIR_T_I32;
 }
 
+#if 0
 static int process_ret_type (c2m_ctx_t c2m_ctx, struct type *ret_type,
                              MIR_type_t qword_types[MAX_QWORDS]) {
   MIR_type_t type;
@@ -162,6 +163,15 @@ static int process_ret_type (c2m_ctx_t c2m_ctx, struct type *ret_type,
     if (n_iregs > 2 || n_fregs > 2 || n_stregs > 1) n_qwords = 0;
   }
   return n_qwords;
+}
+#endif
+
+/* Force sret for any aggregate (struct/union) */
+static int process_ret_type (c2m_ctx_t c2m_ctx, struct type *ret_type,
+                             MIR_type_t qword_types[MAX_QWORDS]) {
+  (void)c2m_ctx; (void)qword_types;
+  if (ret_type->mode == TM_STRUCT || ret_type->mode == TM_UNION) return 0;
+  return 0;  // scalars already handled as single result
 }
 
 static int target_return_by_addr_p (c2m_ctx_t c2m_ctx, struct type *ret_type) {

@@ -244,6 +244,75 @@ void test_structures() {
   test_check("Structures #6", (v2.x == 100) && (v2.nest.y == 200) && (v2.nest.z == 300)); // && (v2.t == 400) && (v2.q == 500));
 }
 
+/*=========================
+   Aggregates & sret ABI
+  =========================*/
+
+/* Small struct (8 bytes) */
+typedef struct { float x, y; } V2;
+/* Exactly 16 bytes */
+typedef struct { int a, b, c, d; } V4;
+/* Large struct (>16 bytes, here 24 bytes on LP64) */
+typedef struct { long a, b, c; } Big;
+
+/* Makers returning by value */
+static V2 mk_v2(float x, float y) { V2 v = { x, y }; return v; }
+static V4 mk_v4(int a, int b, int c, int d) { V4 v = { a, b, c, d }; return v; }
+static Big mk_big(long a, long b, long c) { Big v = { a, b, c }; return v; }
+
+/* Consumers by value */
+static float sum_v2(V2 v) { return v.x + v.y; }
+static int   sum_v4(V4 v) { return v.a + v.b + v.c + v.d; }
+static long  sum_big(Big v){ return v.a + v.b + v.c; }
+
+/* Higher-order: take a function pointer returning a struct by value */
+static int consume_v2_maker(V2 (*maker)(float, float)) {
+  V2 v = maker(3.0f, 4.0f);
+  /* Exact values chosen to avoid rounding surprises. */
+  return (v.x == 3.0f) && (v.y == 4.0f);
+}
+
+static int consume_v4_maker(V4 (*maker)(int,int,int,int)) {
+  V4 v = maker(1, 2, 3, 10);
+  return sum_v4(v) == 16;
+}
+
+static int consume_big_maker(Big (*maker)(long,long,long)) {
+  Big v = maker(10, 20, 30);
+  return sum_big(v) == 60;
+}
+
+void test_aggregates_sret(void) {
+  /* 1) Small struct via function pointer */
+  V2 (*pf_v2)(float,float) = &mk_v2;
+  V2 s2 = pf_v2(1.5f, 2.0f);
+  test_check("SRET #1 (small via PF)", (s2.x == 1.5f) && (s2.y == 2.0f));
+
+  /* 2) Chained return-by-value used as argument */
+  test_check("SRET #2 (chain small)", sum_v2(mk_v2(2.0f, 3.5f)) == 5.5f);
+
+  /* 3) Exactly 16-byte struct (boundary) */
+  V4 s4 = mk_v4(1, 2, 3, 4);
+  test_check("SRET #3 (exactly 16B)", s4.a == 1 && s4.b == 2 && s4.c == 3 && s4.d == 4);
+  test_check("SRET #4 (sum 16B)", sum_v4(s4) == 10);
+
+  /* 4) Large struct via function pointer */
+  Big (*pf_big)(long,long,long) = &mk_big;
+  Big b = pf_big(100, 200, 300);
+  test_check("SRET #5 (large via PF)", b.a == 100 && b.b == 200 && b.c == 300);
+  test_check("SRET #6 (sum large)", sum_big(b) == 600);
+
+  /* Higher-order makers (PF as parameter) */
+  test_check("SRET #7 (PF param small)", consume_v2_maker(&mk_v2));
+  test_check("SRET #8 (PF param 16B)",  consume_v4_maker(&mk_v4));
+  test_check("SRET #9 (PF param large)", consume_big_maker(&mk_big));
+
+  /* Chained on boundary and large types */
+  test_check("SRET #10 (chain 16B)", sum_v4(mk_v4(5, 6, 7, 8)) == 26);
+  test_check("SRET #11 (chain large)", sum_big(mk_big(7, 8, 9)) == 24);
+}
+
+
 static int call_switch(int label) {
   int i = label;
   int r = 0;
@@ -520,6 +589,7 @@ int main (void) {
   test_static_functions();
   test_pointers();
   test_structures();
+  test_aggregates_sret();
   test_switch();
   test_varargs();
   test_setjmp();
