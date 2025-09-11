@@ -64,6 +64,14 @@ struct __sysio_FILE {
     int charCount;
 };
 
+static struct __sysio_FILE __stdin  = { .fd = 0, .error = 0, .stringBuffer = NULL, .stringBufferLength = 0, .stringBufferCapacity = 0, .charCount = 0 };
+static struct __sysio_FILE __stdout = { .fd = 1, .error = 0, .stringBuffer = NULL, .stringBufferLength = 0, .stringBufferCapacity = 0, .charCount = 0 };
+static struct __sysio_FILE __stderr = { .fd = 2, .error = 0, .stringBuffer = NULL, .stringBufferLength = 0, .stringBufferCapacity = 0, .charCount = 0 };
+
+FILE* const stdin  = &__stdin;
+FILE* const stdout = &__stdout;
+FILE* const stderr = &__stderr;
+
 /**
  * @param stream the stream to close
  * @return zero on success, or `-errno` on error
@@ -308,31 +316,32 @@ intmax_t imaxabs(intmax_t j) {
 // malloc(), free(), realloc().
 //********************************************************************************
 
-void free(void *ptr) {
-}
 
-void *malloc(size_t size) {
-	return NULL;
-}
+// void free(void *ptr) {
+// }
 
-void* realloc(void *oldptr, size_t size) {
-    return NULL;
-}
+// void *malloc(size_t size) {
+	// return NULL;
+// }
+
+// void* realloc(void *oldptr, size_t size) {
+    // return NULL;
+// }
 
 //********************************************************************************
 // string.h
 //********************************************************************************
 
-void* calloc(size_t num, size_t size) {
-	if (!num || !size)
-		return NULL;
-	size_t totalSize = num * size;
-    assert(size == totalSize / num);
-	void *data = malloc(totalSize);
-	if (data)
-        memset(data, 0, totalSize);
-	return data;
-}
+// void* calloc(size_t num, size_t size) {
+	// if (!num || !size)
+		// return NULL;
+	// size_t totalSize = num * size;
+    // assert(size == totalSize / num);
+	// void *data = malloc(totalSize);
+	// if (data)
+        // memset(data, 0, totalSize);
+	// return data;
+// }
 
 void* memchr(const void *s, int c, size_t n) {
 	const unsigned char *p = (const unsigned char *)s;
@@ -356,6 +365,7 @@ int memcmp(const void *s1, const void *s2, size_t n) {
 	return 0;
 }
 
+/*
 void* memcpy(void * restrict s1, const void * restrict s2, size_t n) {
 	char *dest = (char *)s1;
 	const char *src = (const char *)s2;
@@ -363,6 +373,7 @@ void* memcpy(void * restrict s1, const void * restrict s2, size_t n) {
 		*dest++ = *src++;
 	return s1;
 }
+*/
 
 void* memmove(void *s1, const void *s2, size_t n) {
 	char *dest = (char *)s1;
@@ -379,12 +390,12 @@ void* memmove(void *s1, const void *s2, size_t n) {
 	return s1;
 }
 
-void* memset(void *s, int c, size_t n) {
-	unsigned char *p = (unsigned char *)s;
-	while (n--)
-		*p++ = (unsigned char)c;
-	return s;
-}
+// void* memset(void *s, int c, size_t n) {
+	// unsigned char *p = (unsigned char *)s;
+	// while (n--)
+		// *p++ = (unsigned char)c;
+	// return s;
+// }
 
 char* strcat(char * restrict s1, const char * restrict s2) {
 	char *rc = s1;
@@ -414,11 +425,11 @@ int strcoll(const char * const s1, const char * const s2) {
 	return strcmp(s1, s2);
 }
 
-char* strcpy(char * restrict s1, const char * restrict s2) {
-	char *rc = s1;
-	while ((*s1++ = *s2++)) ;
-	return rc;
-}
+// char* strcpy(char * restrict s1, const char * restrict s2) {
+	// char *rc = s1;
+	// while ((*s1++ = *s2++)) ;
+	// return rc;
+// }
 
 size_t strcspn(const char *s1, const char * const s2) {
 	size_t result = 0;
@@ -448,11 +459,11 @@ char* strerror(int errnum) {
 	}
 }
 
-size_t strlen(const char * const s) {
-	const char *p = s;
-	while (*p != '\0') p++;
-	return p - s;
-}
+// size_t strlen(const char * const s) {
+	// const char *p = s;
+	// while (*p != '\0') p++;
+	// return p - s;
+// }
 
 char* strncat(char * restrict s1, const char * restrict s2, size_t n) {
 	char * rc = s1;

@@ -581,7 +581,17 @@ void test_matrix() {
   freematrix (SIZE, mm);
 }
 
-int main (void) {
+int main (int argc, char *argv[]) {
+  
+  if (argc > 0) {
+    printf("Number of arguments: %i\n", argc);
+    int i;
+    for (i = 0; i < argc; i++) {
+        //printf("%s", argv[i]);
+        //printf("\n");
+        printf("argument %i: %s\n", i, argv[i]);
+    }
+  }
   
   test_arithmetics();
   test_local_variables();

@@ -11,6 +11,7 @@ public class Runtime {
 
     private static final boolean LOG_WARNING = true;
 
+    private static final int PTR_SIZE = 8;
     private static final int VA_ARG_BUFFER_SIZE = 8;
 
     private byte[] memory = new byte[5000000];
@@ -27,9 +28,9 @@ public class Runtime {
     private HashMap<String, Integer> stringMap = new HashMap<>();
     private FunctionMap functionMap = new FunctionMap();
 
-    public static final int stdin = 0;
-    public static final int stdout = 1;
-    public static final int stderr = 2;
+    public static final int FD_STDIN  = 0;
+    public static final int FD_STDOUT = 1;
+    public static final int FD_STDERR = 2;
     public static final int EOF = -1;
 
     public int growMemory(int minSize) {
@@ -182,6 +183,20 @@ public class Runtime {
         memory[addr] = (byte) ((v >> 8) & 0xFF);
         memory[addr + 1] = (byte) (v & 0xFF);
     }
+    
+    public int mir_read_ushort(long longAddr) {
+        int addr = (int) longAddr;
+        int b1 = memory[addr] & 0xFF;
+        int b2 = memory[addr + 1] & 0xFF;
+        return (b1 << 8) | b2;
+    }
+
+    public void mir_write_ushort(long longAddr, long v) {
+        int addr = (int) longAddr;
+        int val = (int) (v & 0xFFFFL);
+        memory[addr] = (byte) ((val >> 8) & 0xFF);
+        memory[addr + 1] = (byte) (val & 0xFF);
+    }
 
     public void mir_write_int(long longAddr, long v) {
         // System.out.println("writebyte(" + addr + "," + b + ")");
@@ -270,6 +285,14 @@ public class Runtime {
         double d = Double.longBitsToDouble(longBits);
         return d;
     }
+    
+    public long mir_read_pointer(long addr) {
+        return mir_read_long(addr);
+    }
+
+    public void mir_write_pointer(long addr, long v) {
+        mir_write_long(addr, v);
+    }
 
     public long mir_set_data_bytes(byte[] s) {
         // System.out.println("writebyte(" + addr + "," + b + ")");
@@ -346,6 +369,12 @@ public class Runtime {
     public long mir_set_data_float(float v) {
         long addr = mir_allocate(4);
         mir_write_float(addr, v);
+        return addr;
+    }
+    
+    public long mir_set_data_double(double v) {
+        long addr = mir_allocate(4);
+        mir_write_double(addr, v);
         return addr;
     }
 
@@ -538,6 +567,68 @@ public class Runtime {
             System.out.println("[WARNING] " + message);
         }
     }
+    
+    
+    /**
+     * Constructs an array C argv = {progName, args..., NULL} in MIR memory. 
+     * Returns the address (char**). Expected argc = args.length + 1.
+     */
+    public long makeArgv(String progName, String[] args) {
+        if (args == null) args = new String[0];
+        int argc = args.length + 1; // +1 for argv[0] = progName
+        long argvAddr = malloc((argc + 1L) * PTR_SIZE); // +1 fo the final NULL
+
+        // argv[0] = progName
+        long p0 = mir_get_string_ptr(progName != null ? progName : "program");
+        mir_write_long(argvAddr + 0L * PTR_SIZE, p0);
+
+        // argv[1..argc-1]
+        for (int i = 0; i < args.length; i++) {
+            long pi = mir_get_string_ptr(args[i] != null ? args[i] : "");
+            mir_write_long(argvAddr + (long) (i + 1) * PTR_SIZE, pi);
+        }
+
+        // argv[argc] = NULL
+        mir_write_long(argvAddr + (long) argc * PTR_SIZE, 0L);
+        return argvAddr;
+    }
+    
+    /* Write: fd=1 -> stdout, fd=2 -> stderr. Return number of written bytes or -errno */
+    public long mir_sysio_write(int fd, long bufferAddr, long count) {
+        int len = (int) count;
+        if (len < 0) return -1; // EINVAL simplified
+
+        byte[] buf = new byte[len];
+        System.arraycopy(memory, (int) bufferAddr, buf, 0, len);
+
+        try {
+            String s = new String(buf); // Ok for text (printf/fputs)
+            if (fd == FD_STDOUT) {
+                System.out.print(s);
+            } else if (fd == FD_STDERR) {
+                System.err.print(s);
+            } else {
+                // No real file yet: simulate ENOSYS
+                return -38; // -ENOSYS
+            }
+            return count;
+        } catch (Exception e) {
+            return -5; // -EIO
+        }
+    }
+    
+    /* clock_gettime backend: writes struct timespec { time_t sec; long nsec; } */
+    public int mir_sysclock_gettime(int clk, long tsAddr) {
+        // CLOCK_REALTIME approximated via currentTimeMillis. TODO: MONOTONIC via nanoTime
+        long millis = System.currentTimeMillis();
+        long sec = millis / 1000L;
+        long nsec = (millis % 1000L) * 1000000L;
+
+        // struct timespec is 2 x 8 bytes on our target
+        mir_write_long(tsAddr, sec);
+        mir_write_long(tsAddr + 8, nsec);
+        return 0;
+    }
 
     public long memcpy(long destAddr, long srcAddr, long size) {
         System.arraycopy(memory, (int) srcAddr, memory, (int) destAddr, (int) size);
@@ -585,11 +676,12 @@ public class Runtime {
         return dAddr;
     }
 
-    public int printf(long addr, Object... args) {
-        String s = getStringFromMemory(addr);
-        System.out.printf(s, args);
-        return 1;
-    }
+//    public int printf(long addr, Object... args) {
+//        String s = getStringFromMemory(addr);
+//        String convertedFormat = convertPrintfFormat(s);
+//        System.out.printf(convertedFormat, args);
+//        return 1;
+//    }
 
     public long fprintf(long id, Object... args) {
         logWarning("fprintf: not implemented yet");
@@ -603,7 +695,7 @@ public class Runtime {
         return 0;
     }
 
-    public long fclose(long u0_rgsFile) {
+    public int fclose(long u0_rgsFile) {
         logWarning("fclose: not implemented yet");
         // TODO Auto-generated method stub
         return 0;
@@ -615,7 +707,7 @@ public class Runtime {
         return 0;
     }
 
-    public long feof(long u0_rgsFile) {
+    public int feof(long u0_rgsFile) {
         logWarning("feof: not implemented yet");
         // TODO Auto-generated method stub
         return 0;
@@ -638,7 +730,7 @@ public class Runtime {
         return format;
     }
 
-    public long sprintf(long bufferAddr, long stringAddr, Object... args) {
+    public int sprintf(long bufferAddr, long stringAddr, Object... args) {
         String inputString = getStringFromMemory(stringAddr);
         try {
             String convertedFormat = convertPrintfFormat(inputString);
@@ -652,7 +744,7 @@ public class Runtime {
         }
     }
 
-    public long vsprintf(long bufferAddr, long stringAddr, long va_listAddress) {
+    public int vsprintf(long bufferAddr, long stringAddr, long va_listAddress) {
         // System.out.println("[WARNING] vsprintf: not implemented yet");
         String inputString = getStringFromMemory(stringAddr);
         try {
