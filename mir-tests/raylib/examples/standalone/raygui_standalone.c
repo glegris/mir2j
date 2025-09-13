@@ -29,6 +29,7 @@ int main()
     const int screenHeight = 560;
 
     InitWindow(screenWidth, screenHeight, "raygui - controls test suite");
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 16);
     //SetExitKey(0);
 
     // GUI controls initialization

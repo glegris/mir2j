@@ -1411,7 +1411,7 @@ static void UnloadTexture(Texture2D texture);
 // raylib functions already implemented in raygui
 //-------------------------------------------------------------------------------
 static Color GetColor(int hexValue);                // Returns a Color struct from hexadecimal value
-static int ColorToInt(Color color);                 // Returns hexadecimal value for a Color
+int ColorToInt(Color color);                 // Returns hexadecimal value for a Color
 static Color Fade(Color color, float alpha);        // Color fade-in or fade-out, alpha goes from 0.0f to 1.0f
 static bool CheckCollisionPointRec(Vector2 point, Rectangle rec);   // Check if point is inside rectangle
 static const char *TextFormat(const char *text, ...);               // Formatting of text with variables to 'embed'
@@ -4493,7 +4493,7 @@ static Color GetColor(int hexValue)
 }
 
 // Returns hexadecimal value for a Color
-static int ColorToInt(Color color)
+int ColorToInt(Color color)
 {
     return (((int)color.r << 24) | ((int)color.g << 16) | ((int)color.b << 8) | (int)color.a);
 }

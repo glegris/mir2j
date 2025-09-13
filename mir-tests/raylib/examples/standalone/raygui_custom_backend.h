@@ -218,39 +218,47 @@ void UnloadTexture(Texture2D texture)
 // Text required functions
 //-------------------------------------------------------------------------------
 // USED IN: GuiLoadStyleDefault()
+
+int getMaxCharWidth()  { return 10; }
+int getMaxCharHeight() { return 10; }
+
+static Font defaultFont = { 0 };
+
 Font GetFontDefault(void)
 {
     printf("[DEBUG] GetFontDefault()\n");
-    //Font font = { 0 };
-    int glyphCount = 128;
-    Texture2D texture2D = { .id = 45, .width = 1280, .height = 10, .mipmaps = 1, .format = 0}; // FIXME format ?
-    //Rectangle rect = { .x = 0, .y = 0, .width = 10, .height = 10 };
-    Rectangle* rects = malloc(glyphCount * sizeof(Rectangle)); 
-    //GlyphInfo glyph = { .value = 0, .offsetX = 0, .offsetY = 0, .advanceX = 0, .image = NULL };
-    GlyphInfo* glyphs = malloc(glyphCount * sizeof(GlyphInfo));
-    for (int i = 0; i < glyphCount; i++) {
-        Rectangle rect = { .x = i * 10, .y = 0, .width = 10, .height = 10 };
-    	rects[i] = rect;
-    	GlyphInfo glyph = { .value = 0, .offsetX = 0, .offsetY = 0, .advanceX = 0, .image = NULL };
-    	glyphs[i] = glyph;
-    } 
-    Font font = { .baseSize = 10, .glyphCount = glyphCount, .texture = texture2D, .recs = rects, .glyphs = glyphs };
-        
-    // TODO: Return default rendering Font for the UI
     
-    return font; 
+    if (defaultFont.glyphs != NULL) {
+        return defaultFont;
+    }
+    int baseH = getMaxCharHeight();
+    int monoW = getMaxCharWidth();
+    int glyphCount = 128;
+    
+    Rectangle* rects = malloc(glyphCount * sizeof(Rectangle)); 
+    GlyphInfo* glyphs = malloc(glyphCount * sizeof(GlyphInfo));
+    
+    for (int i = 0; i < glyphCount; i++) {
+        rects[i] = (Rectangle) { .x = i * monoW, .y = 0, .width = monoW, .height = baseH };
+        glyphs[i] = (GlyphInfo) { .value = i, .offsetX = 0, .offsetY = 0, .advanceX = monoW, .image = (Image){0} };
+    }
+
+    Texture2D tex = (Texture2D) { .id = 1, .width = monoW * glyphCount, .height = baseH, .mipmaps = 1, .format = 0}; // FIXME format ?
+    defaultFont = (Font) { .baseSize = baseH, .glyphCount = glyphCount, .texture = tex, .recs = rects, .glyphs = glyphs };
+
+    return defaultFont; 
 }
 
 // USED IN: GetTextWidth(), GuiTextBoxMulti()
-Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing) 
-{ 
-    printf("[DEBUG] MeasureTextEx()\n");
-    Vector2 size = { 0 };
+// Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing) 
+// { 
+    // printf("[DEBUG] MeasureTextEx()\n");
+    // Vector2 size = { 0 };
     
-    // TODO: Return text size (width, height) on screen depending on the Font, text, fontSize and spacing
+    // // TODO: Return text size (width, height) on screen depending on the Font, text, fontSize and spacing
     
-    return size;
-}
+    // return size;
+// }
 
 // USED IN: GuiDrawText()
 void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize, float spacing, Color tint)
