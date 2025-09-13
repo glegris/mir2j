@@ -61,15 +61,6 @@ public class Runtime {
         return oldStackPosition;
     }
 
-//	public long mir_allocate(int sizeInBytes) {
-//		int oldStackPosition = stackPosition;
-//		if ((oldStackPosition + sizeInBytes) > memory.length) {
-//			growMemory(oldStackPosition + sizeInBytes);
-//		}
-//		stackPosition += sizeInBytes;
-//		return oldStackPosition;
-//	}
-
     private MemoryBlock addBlock(int address, int size, boolean free) {
         if ((address + size) > memory.length) {
             // TODO Try to merge free blocks before growing memory
@@ -498,6 +489,27 @@ public class Runtime {
         String s = new String(bytes);
         return s;
     }
+    
+    public static Method getDeclaredMethodRecursive(Class current, String name) {
+        // System.out.println("Searching method '" + name + "' in class " + clazz.getName());
+        while (current != null) {
+            Method method = null;
+            Method[] methods = current.getDeclaredMethods();
+            for (int i = 0; i < methods.length; i++) {
+                method = methods[i];
+                // System.out.println("Method: " + method.getName());
+                if (method.getName().equals(name)) {
+                    // System.out.println("Found method '" + name + "' in class " + current);
+                    // method.setAccessible(true);
+                    return method;
+                }
+
+            }
+            current = current.getSuperclass();
+
+        }
+        return null;
+    }
 
     public long mir_get_function_ptr(String functionName) {
         int functionAddress = 0;
@@ -505,22 +517,14 @@ public class Runtime {
         MethodHandle methodHandle = functionMap.getMethodHandleByName(functionName);
         // If unknown, link then register the function
         if (methodHandle == null) {
-            Method[] methods = getClass().getDeclaredMethods();
-            int targetMethodIndex = -1;
-            for (int i = 0; i < methods.length; i++) {
-                // System.out.println("method name: " + methods[i].getName());
-                if (methods[i].getName().equals(functionName)) {
-                    targetMethodIndex = i;
-                }
-            }
-            if (targetMethodIndex == -1) {
+            Method method = getDeclaredMethodRecursive(getClass(), functionName);
+            if (method == null) {
                 throw new RuntimeException("Function '" + functionName + "' was not found.");
             }
             if (nextfunctionPointer > functionSpaceStartAddress + functionSpaceSize) {
                 throw new RuntimeException("Can't allocate more function pointer");
             }
             functionAddress = nextfunctionPointer;
-            Method method = methods[targetMethodIndex];
             // Allow reflective access to private methods
             method.setAccessible(true);
             methodHandle = new MethodHandle(functionAddress, method);
