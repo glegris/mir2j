@@ -13,25 +13,35 @@ static int unused_data_addr_count = 0;
 // This flag prevents jump after a return statement (bug ?) 
 static int is_in_dead_code = FALSE;
 static char curr_func_has_stack_allocation = FALSE;
+static int module_serial = 0;  /* 1, 2, 3, ... */
 
 /* Symbol table */
 typedef struct mir2j_symbol {
   const char *name;
   char* mangled_name;
   char visible;
+  int module_id; // -1 for visible, otherwise module_serial at creation time
 } symbol_t;
 
 DEF_HTAB (symbol_t);
 
 HTAB (symbol_t) * symbol_table;
 
-static int symbol_eq (symbol_t s1, symbol_t s2, void *arg) {
-  return strcmp (s1.name, s2.name) == 0;
+static int symbol_eq (symbol_t a, symbol_t b, void *arg) {
+  if (a.visible && b.visible)
+    return strcmp(a.name, b.name) == 0;
+  if (!a.visible && !b.visible)
+    return (a.module_id == b.module_id) && strcmp(a.name, b.name) == 0;
+  return 0; // visible vs non-visible => not equals
 }
 
 static htab_hash_t symbol_hash (symbol_t s, void *arg) {
-  return mir_hash (s.name, strlen (s.name), 0);
+  htab_hash_t h = mir_hash(s.name, strlen(s.name), 0);
+  if (!s.visible)  // isolates keys by module
+    h ^= (htab_hash_t) s.module_id * 0x9e3779b9u;
+  return h;
 }
+
 
 static char* mormalize_name(char* name) {
   if (name[0] == '.') {
@@ -56,6 +66,8 @@ static symbol_t add_symbol(const char* name, char visible) {
   symbol_t symbol;
   symbol.name = name;
   symbol.visible = visible;
+  symbol.module_id = visible ? -1 : module_serial;
+  
   char* normalized_name = mormalize_name((char*) name);
   if (visible) {  
     int size = strlen(normalized_name) + 1;
@@ -63,28 +75,33 @@ static symbol_t add_symbol(const char* name, char visible) {
     strcpy(c_name, normalized_name);
   	symbol.mangled_name = c_name;
   } else {
-    char* prefix = "m1_";
-    int size = strlen(normalized_name) + strlen(prefix) + 1;
-    char *m_name = (char*) malloc(size);
+    char prefix[16];
+    snprintf(prefix, sizeof(prefix), "m%d_", module_serial);
+    char *m_name = malloc(strlen(prefix) + strlen(normalized_name) + 1);
     strcpy(m_name, prefix);
     strcat(m_name, normalized_name);
-  	symbol.mangled_name = m_name;
+    symbol.mangled_name = m_name;
   }
   HTAB_DO (symbol_t, symbol_table, symbol, HTAB_INSERT, symbol);
   return symbol;
 }
 
 static char* get_mangled_symbol_name(const char* name) {
-  //char* mangled_name;
-  symbol_t symbol;
-  symbol.name = name;
-  if (HTAB_DO (symbol_t, symbol_table, symbol, HTAB_FIND, symbol)) {
-    return symbol.mangled_name;
-  } else {
-    symbol = add_symbol(name, FALSE);
-    return symbol.mangled_name;
-  }
-  //return mangled_name;
+  symbol_t s;
+  s.name = name;
+
+  // 1) attempt visible
+  s.visible = 1; s.module_id = -1;
+  if (HTAB_DO (symbol_t, symbol_table, s, HTAB_FIND, s))
+    return s.mangled_name;
+
+  // 2) attempt not visible from current module
+  s.visible = 0; s.module_id = module_serial;
+  if (HTAB_DO (symbol_t, symbol_table, s, HTAB_FIND, s))
+    return s.mangled_name;
+
+  // 3) otherwise create non-visible from the current module
+  return add_symbol(name, 0).mangled_name;
 }
 
 static void create_symbol_table() {
@@ -94,6 +111,30 @@ static void create_symbol_table() {
 static void destroy_symbol_table() {
   // TODO free symbol names
   HTAB_DESTROY (symbol_t, symbol_table);
+}
+
+static inline void fprintf_long_dec (FILE *f, int64_t v) {
+  fprintf(f, "%" PRId64 "L", v);
+}
+
+static inline void fprintf_long_hex (FILE *f, uint64_t v) {
+  if (v == 0) { 
+    fputs("0L", f); 
+    return; 
+  }
+  fprintf(f, "0x%" PRIx64 "L", v);
+}
+
+static inline void fprintf_float (FILE *f, float x) {
+  fprintf(f, "%.9gf", x); // ex: 0f, 1.5f, 1e-8f
+}
+
+static inline void fprintf_double (FILE *f, double x) {
+  fprintf(f, "%.17g", x); // ex: 0, 0.5, 1e-12
+}
+
+static inline void fprintf_long_double (FILE *f, long double x) {
+  fprintf(f, "%.17g", (double) x);
 }
 
 static size_t get_MIR_type_size (MIR_type_t type) {
@@ -123,7 +164,7 @@ static void out_mangled_type (FILE *f, MIR_type_t t) {
   case MIR_T_I32: fprintf (f, "int"); break; // int32_t
   case MIR_T_U32: fprintf (f, "uint"); break; // uint32_t
   case MIR_T_I64: fprintf (f, "long"); break; // int64_t
-  case MIR_T_U64: fprintf (f, "ulong"); break; // uint64_t FIXME ?
+  case MIR_T_U64: fprintf (f, "ulong"); break; // uint64_t
   case MIR_T_F: fprintf (f, "float"); break;
   case MIR_T_D: fprintf (f, "double"); break;
   case MIR_T_LD: fprintf (f, "long_double"); break; // long double
@@ -148,7 +189,7 @@ static void out_type (FILE *f, MIR_type_t t) {
   case MIR_T_I32: fprintf (f, "int"); break; // int32_t
   case MIR_T_U32: fprintf (f, "long"); break; // uint32_t
   case MIR_T_I64: fprintf (f, "long"); break; // int64_t
-  case MIR_T_U64: fprintf (f, "long"); break; // uint64_t FIXME ?
+  case MIR_T_U64: fprintf (f, "long"); break; // uint64_t
   case MIR_T_F: fprintf (f, "float"); break;
   case MIR_T_D: fprintf (f, "double"); break;
   case MIR_T_LD: fprintf (f, "double"); break; // long double
@@ -170,13 +211,13 @@ static void out_type_value (FILE *f, MIR_type_t t, uint8_t* v) {
   case MIR_T_I16: fprintf (f, "%" PRIi16, ((int16_t *)v)[0]); break; // int16_t
   case MIR_T_U16: fprintf (f, "%" PRIu16, ((uint16_t *)v)[0]); break; // uint16_t
   case MIR_T_I32: fprintf (f, "%" PRIi32, ((int32_t *)v)[0]); break; // int32_t
-  case MIR_T_U32: fprintf (f, "%" PRIu32, ((uint32_t *)v)[0]); break; // uint32_t
-  case MIR_T_I64: fprintf (f, "%" PRIi64, ((int64_t *)v)[0]); break; // int64_t
-  case MIR_T_U64: fprintf (f, "%" PRIu64, ((uint64_t *)v)[0]); break; // uint64_t FIXME ?
-  case MIR_T_F: fprintf (f, "%g", ((float *)v)[0]); break;
-  case MIR_T_D: fprintf (f, "%g", ((double *)v)[0]); break;
-  case MIR_T_LD: fprintf (f, "%g", ((long double *)v)[0]); break; // long double
-  case MIR_T_P: fprintf (f, "%" PRIu64, ((uint64_t *)v)[0]); break;
+  case MIR_T_U32: fprintf (f, "%" PRIu32 "L", ((uint32_t *)v)[0]); break; // uint32_t
+  case MIR_T_I64: fprintf (f, "%" PRIi64 "L", ((int64_t *)v)[0]); break; // int64_t
+  case MIR_T_U64: fprintf_long_hex(f, ((uint64_t*)v)[0]); break; // uint64_t
+  case MIR_T_F: fprintf_float (f, ((float *)v)[0]);; break;
+  case MIR_T_D: fprintf_double(f, ((double*)v)[0]); break;
+  case MIR_T_LD: fprintf_long_double(f, ((long double*)v)[0]); break; // long double
+  case MIR_T_P: fprintf_long_hex(f, ((uint64_t*)v)[0]); break;
   default: mir_assert (FALSE);
   }
 }
@@ -185,7 +226,7 @@ static void out_op_mem_address(MIR_context_t ctx, FILE *f, MIR_op_t op) {
 	MIR_reg_t no_reg = 0;
 	int disp_p = FALSE;
     if (op.u.mem.disp != 0 || (op.u.mem.base == no_reg && op.u.mem.index == no_reg)) {
-       fprintf (f, "%" PRId64, op.u.mem.disp);
+       fprintf_long_dec(f, op.u.mem.disp);
        disp_p = TRUE;
     }
     if (op.u.mem.base != no_reg || op.u.mem.index != no_reg) {
@@ -202,11 +243,11 @@ static void out_op_mem_address(MIR_context_t ctx, FILE *f, MIR_op_t op) {
 static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
   switch (op.mode) {
   case MIR_OP_REG: fprintf (f, "%s", MIR_reg_name (ctx, op.u.reg, curr_func)); break;
-  case MIR_OP_INT: fprintf (f, "%" PRId64 "L", op.u.i); break; // FIXME Try to remove the "L" postfix
-  case MIR_OP_UINT: fprintf (f, "%" PRIu64, op.u.u); break;
-  case MIR_OP_FLOAT: fprintf (f, "%#.*gf", FLT_MANT_DIG, op.u.f); break;
-  case MIR_OP_DOUBLE: fprintf (f, "%#.*g", DBL_MANT_DIG, op.u.d); break;
-  case MIR_OP_LDOUBLE: fprintf (f, "%#.*lgl", LDBL_MANT_DIG, op.u.ld); break;
+  case MIR_OP_INT: fprintf_long_dec(f, op.u.i); break;
+  case MIR_OP_UINT: fprintf_long_hex(f, op.u.u); break;
+  case MIR_OP_FLOAT: fprintf_float (f,  op.u.f);  break;
+  case MIR_OP_DOUBLE: fprintf_double(f,  op.u.d); break;
+  case MIR_OP_LDOUBLE: fprintf_long_double(f, op.u.ld); break;
   case MIR_OP_REF: {
     char* name = (char*) MIR_item_name (ctx, op.u.ref);
     char* mangled_name = get_mangled_symbol_name(name);
@@ -215,25 +256,26 @@ static void out_op (MIR_context_t ctx, FILE *f, MIR_op_t op) {
   case MIR_OP_STR: {
     fprintf (f, "mir_get_string_ptr(\"");
     for (int i = 0; i < op.u.str.len - 1; i++) {
-      if (op.u.str.s[i] == '\n') {
-          fprintf (f, "\\n");		
-      } else {
-          fprintf (f, "%c", op.u.str.s[i]);		
-      } 
+      unsigned char c = (unsigned char) op.u.str.s[i];
+      switch (c) {
+      case '\n': fputs("\\n", f); break;
+      case '\r': fputs("\\r", f); break;
+      case '\t': fputs("\\t", f); break;
+      case '\b': fputs("\\b", f); break;
+      case '\f': fputs("\\f", f); break;
+      case '\"': fputs("\\\"", f); break;
+      case '\\': fputs("\\\\", f); break;
+      case 0:    fputs("\\0",  f); break;
+      default:
+        if (c < 0x20 || c == 0x7F || c >= 0x80) {
+          // Encode non-printable ASCII to \u00XX for Java
+          fprintf(f, "\\u%04X", (unsigned)c);
+        } else {
+          fputc((char)c, f);
+        }
+      }
     }
-    fprintf (f, "\")");
-    //fprintf (f, "\"%s\"", op.u.str.s); 
-    /*
-    fprintf (f, "\"");
-    for (int i = 0; i < op.u.str.len - 1; i++) {
-      if (op.u.str.s[i] == '\n') {
-          fprintf (f, "\\n");		
-      } else {
-          fprintf (f, "%c", op.u.str.s[i]);		
-      } 
-    }
-    fprintf (f, "\"");
-    */
+    fputs("\")", f);
     break;
   }
   case MIR_OP_MEM: {
@@ -1107,7 +1149,7 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
   ------------------------------------------------ */
   symbol_t func_symbol;
   if (!item->export_p) {
-    fprintf (f, "private "); // static
+    fprintf (f, "protected "); // static
     func_symbol = add_symbol(curr_func->name, FALSE);
   } else {
   	fprintf (f, "public ");
@@ -1182,6 +1224,7 @@ static void MIR_all_modules2j (MIR_context_t ctx, FILE *f) {
   for (MIR_module_t m = DLIST_HEAD (MIR_module_t, *MIR_get_module_list (ctx));
        m != NULL;
        m = DLIST_NEXT (MIR_module_t, m)) {
+    ++module_serial;
     for (MIR_item_t it = DLIST_HEAD (MIR_item_t, m->items);
          it != NULL;
          it = DLIST_NEXT (MIR_item_t, it)) {
