@@ -8164,6 +8164,8 @@ static void classify_node (node_t n, int *expr_attr_p, int *stmt_p) {
 /* Create "static const char __func__[] = "<func name>" at the
    beginning of func_block if it is necessary.  */
 static void add__func__def (c2m_ctx_t c2m_ctx, node_t func_block, str_t func_name) {
+  return;
+  /*
   static const char fdecl_name[] = "__func__";
   pos_t pos = POS (func_block);
   node_t list, declarator, decl, decl_specs;
@@ -8183,6 +8185,7 @@ static void add__func__def (c2m_ctx_t c2m_ctx, node_t func_block, str_t func_nam
   decl = new_pos_node3 (c2m_ctx, N_SPEC_DECL, pos, decl_specs, declarator,
                         new_str_node (c2m_ctx, N_STR, func_name, pos));
   NL_PREPEND (NL_EL (func_block->u.ops, 1)->u.ops, decl);
+  */
 }
 
 /* Sort by decl scope nesting (more nested scope has a bigger UID) and decl size. */
