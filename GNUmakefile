@@ -539,7 +539,8 @@ clean-mir2c-test:
 .PHONY: m2j clean-m2j
 
 m2j: $(BUILD_DIR)/mir.$(OBJSUFF) $(SRC_DIR)/mir2j/mir2j.c
-	$(COMPILE_AND_LINK) -DMIR2J $^ $(EXEO)$(BUILD_DIR)/m2j $(LDLIBS) && $(BUILD_DIR)/m2j$(EXE) sieve.mir
+	$(COMPILE_AND_LINK) -DMIR2J $^ $(EXEO)$(BUILD_DIR)/m2j $(LDLIBS)
+#	$(COMPILE_AND_LINK) -DMIR2J $^ $(EXEO)$(BUILD_DIR)/m2j $(LDLIBS) && $(BUILD_DIR)/m2j$(EXE) target.mir
 
 clean-m2j:
 	$(RM) $(BUILD_DIR)/m2j$(EXE)

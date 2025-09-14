@@ -16,3 +16,11 @@ Compile c2m
 
 
 ./c2m -DRAYGUI_NO_ICONS -S /home/gl/Development/raylib/examples/standalone/raygui_standalone.c
+
+
+Execute
+-------
+
+./c2m sieve.c -ei
+./c2m sieve.mir -ei
+./c2m sieve.bmir -ei
