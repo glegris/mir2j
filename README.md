@@ -1,45 +1,77 @@
-# MIR2j Project
+# MIR2j
 
-The goal of this project is to make C applications/libraries work in a JVM. There are already projects that do this:
-- [NestedVM ](http://nestedvm.ibex.org/) or [Cibyl](https://github.com/SimonKagstrom/cibyl)
+Run C applications/libraries on the JVM by translating __[MIR](https://github.com/vnmakarov/mir)__ to __Java source__.
+
+Prior art exists:
+- [NestedVM ](http://nestedvm.ibex.org/) / [Cibyl](https://github.com/SimonKagstrom/cibyl)
 - [LLJVM-translator](https://github.com/maropu/lljvm-translator) (based on [LLJVM ](https://github.com/davidar/lljvm) by David Roberts)
 
 It should be possible to do the same thing with [MIR](https://github.com/vnmakarov/mir) but with a much smaller footprint.
 
-At first, I thought it wasn't a good idea (for me) to start generating bytecodes because I needed to understand how MIR works and experiment with trial and error (and also because I haven't found a good bytecode manipulation library in pure c). So I decided to generate Java sources for now. Another advantage is that we could also easily generate sources for languages close to Java syntax like C# or Dart.
+The idea here is to reuse [MIR](https://github.com/vnmakarov/mir) for a much smaller footprint and generate Java sources (for easy experimentation and portability). Generating Java also keeps the door open to C# / Dart later.
 
 ```
-LLVM IR / C => MIR => Java Sources
+C / LLVM IR  →  MIR  →  Java sources  →  JVM
 ```
 
-Because there is no goto instruction at source level, the program flow is based on a loop with switch/case statements.
+Because there is no ```goto``` instruction at source level in Java, control flow is expressed with a loop + switch/case over a label
 
 ```
-public void doSomething() {
-  while(true) {
-    switch(label) {
-    case 1:
-     ....
-    case 2:
-      label = 1; // goto L1;
-      break;
-    }
+while (true) {
+  switch (label) {
+    case 1: /* ... */ label = 2; break;  // goto L2;
+    case 2: /* ... */ return;
   }
-}  
+}
 ```
 
-Memory is a giant byte array (byte[]) with this structure: DATA | STACK | HEAP. It seems to me than putting the heap at the end helps to minimize memory footprint when a program is not allocating on the heap.
+## Machine model
+- Endianness: little-endian (LE)
+- Pointer size: 64-bit (8 bytes)
+- Memory layout: DATA | STACK | HEAP in a single byte[]
+- Function pointers are modeled as small integers mapped to Java Method handles.
 
-The C Standard library will be implemented in two places : a Runtime class (only printf and alloca yet) and a single C file for the other common functions which don't require an interaction with the subsystem (like string manipulations)
+## Runtine
 
-Currently the code is in its early stages, but the sieve.c example can already be converted and works fine.
+The default runtime intentionally stays minimal: memcpy, memset, very limited printf, basic strlen/strcpy, a few syscalls/stubs used by tests.
 
-## Issues
+If you need more libc surface (and richer printf/vfprintf/…), you can link a small C standard library alongside.
 
-When calling functions passing structures by value, the following behavior has been observed:
-> If the size of the structure is less than 16 bytes, then c2mir generates functions which return 2 values of 8 bytes to avoid allocating a block of memory on the stack.
+## Build
 
-> If the size of the structure is greater than 16 bytes, c2mir allocates a memory block on the stack in which the values of the structure are written.
+Prereqs: make, a C99 compiler, and a JDK 1.2+
 
-Until this problem is fixed, you should modify your C source code so that structures are always larger than 16 bytes (ugly)
+#### Build MIR and c2mir
+
+``` make ```
+
+#### Build mir2j
+
+``` make m2j```
+
+#### Build test program & demo ([raygui 3.5](https://github.com/raysan5/raygui) port in Java)  
+
+```
+cd mir2j
+./compile-test.sh
+```
+
+or 
+
+```
+./compile-raygui.sh
+```
+
+## Status
+- Experimental. Focus is correctness and clarity of the translation path.
+- Java sources are generated for readability and quick iteration (no bytecode gen yet).
+
+## Why MIR?
+[MIR](https://github.com/vnmakarov/mir) is tiny and fast, making it a great IR target for lightweight toolchains. The translator stays simple and the runtime small.
+
+## Roadmap (short)
+- Fill more libc gaps as needed (either Java-side or via a small C shim)
+- More intrinsics / syscalls as use-cases surface
+- Performance passes once semantics are solid
+
 
