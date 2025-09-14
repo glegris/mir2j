@@ -225,32 +225,32 @@ public class Raygui extends RayguiBase implements Backend.InputSink {
     public static final int HUEBAR_SELECTOR_HEIGHT = 19;
     public static final int HUEBAR_SELECTOR_OVERFLOW = 20;
 
-    private static final int LIGHTGRAY = RGBA(200, 200, 200, 255);
-    private static final int GRAY = RGBA(130, 130, 130, 255);
-    private static final int DARKGRAY = RGBA(80, 80, 80, 255);
-    private static final int YELLOW = RGBA(253, 249, 0, 255);
-    private static final int GOLD = RGBA(255, 203, 0, 255);
-    private static final int ORANGE = RGBA(255, 161, 0, 255);
-    private static final int PINK = RGBA(255, 109, 194, 255);
-    private static final int RED = RGBA(230, 41, 55, 255);
+    public static final int LIGHTGRAY = RGBA(200, 200, 200, 255);
+    public static final int GRAY = RGBA(130, 130, 130, 255);
+    public static final int DARKGRAY = RGBA(80, 80, 80, 255);
+    public static final int YELLOW = RGBA(253, 249, 0, 255);
+    public static final int GOLD = RGBA(255, 203, 0, 255);
+    public static final int ORANGE = RGBA(255, 161, 0, 255);
+    public static final int PINK = RGBA(255, 109, 194, 255);
+    public static final int RED = RGBA(230, 41, 55, 255);
     private static final int MAROON = RGBA(190, 33, 55, 255);
-    private static final int GREEN = RGBA(0, 228, 48, 255);
-    private static final int LIME = RGBA(0, 158, 47, 255);
-    private static final int DARKGREEN = RGBA(0, 117, 44, 255);
-    private static final int SKYBLUE = RGBA(102, 191, 255, 255);
-    private static final int BLUE = RGBA(0, 121, 241, 255);
-    private static final int DARKBLUE = RGBA(0, 82, 172, 255);
-    private static final int PURPLE = RGBA(200, 122, 255, 255);
-    private static final int VIOLET = RGBA(135, 60, 190, 255);
-    private static final int DARKPURPLE = RGBA(112, 31, 126, 255);
-    private static final int BEIGE = RGBA(211, 176, 131, 255);
-    private static final int BROWN = RGBA(127, 106, 79, 255);
-    private static final int DARKBROWN = RGBA(76, 63, 47, 255);
-    private static final int WHITE = RGBA(255, 255, 255, 255);
-    private static final int BLACK = RGBA(0, 0, 0, 255);
-    private static final int BLANK = RGBA(0, 0, 0, 0);
-    private static final int MAGENTA = RGBA(255, 0, 255, 255);
-    private static final int RAYWHITE = RGBA(245, 245, 245, 255);
+    public static final int GREEN = RGBA(0, 228, 48, 255);
+    public static final int LIME = RGBA(0, 158, 47, 255);
+    public static final int DARKGREEN = RGBA(0, 117, 44, 255);
+    public static final int SKYBLUE = RGBA(102, 191, 255, 255);
+    public static final int BLUE = RGBA(0, 121, 241, 255);
+    public static final int DARKBLUE = RGBA(0, 82, 172, 255);
+    public static final int PURPLE = RGBA(200, 122, 255, 255);
+    public static final int VIOLET = RGBA(135, 60, 190, 255);
+    public static final int DARKPURPLE = RGBA(112, 31, 126, 255);
+    public static final int BEIGE = RGBA(211, 176, 131, 255);
+    public static final int BROWN = RGBA(127, 106, 79, 255);
+    public static final int DARKBROWN = RGBA(76, 63, 47, 255);
+    public static final int WHITE = RGBA(255, 255, 255, 255);
+    public static final int BLACK = RGBA(0, 0, 0, 255);
+    public static final int BLANK = RGBA(0, 0, 0, 0);
+    public static final int MAGENTA = RGBA(255, 0, 255, 255);
+    public static final int RAYWHITE = RGBA(245, 245, 245, 255);
 
     public static final int ICON_NONE = 0;
     public static final int ICON_FOLDER_FILE_OPEN = 1;
@@ -539,6 +539,10 @@ public class Raygui extends RayguiBase implements Backend.InputSink {
 
     private Backend backend;
 
+    public Raygui(Backend backend) {
+        this.backend = backend;
+    }
+    
     @Override
     public void InitWindow(int screenWidth, int screenHeight, long screenNameAddr) {
         initEdges();
@@ -1541,230 +1545,6 @@ public class Raygui extends RayguiBase implements Backend.InputSink {
         }
     }
 
-    public void demo() {
-
-        Raygui gui = this;
-
-        final int screenWidth = 690;
-        final int screenHeight = 560;
-
-        gui.initWindow(screenWidth, screenHeight, "raygui - controls test suite (Java)");
-        try {
-            gui.guiSetStyle(Raygui.DEFAULT, Raygui.TEXT_SIZE, 16);
-        } catch (Throwable ignore) {
-        }
-
-        int dropdownBox000Active = 0;
-        boolean dropDown000EditMode = false;
-
-        int dropdownBox001Active = 0;
-        boolean dropDown001EditMode = false;
-
-        Raygui.RefInt spinner001Value = new Raygui.RefInt(0);
-        boolean spinnerEditMode = false;
-
-        Raygui.RefInt valueBox002Value = new Raygui.RefInt(0);
-        boolean valueBoxEditMode = false;
-
-        Raygui.RefString textBoxText = new Raygui.RefString("Text box");
-        boolean textBoxEditMode = false;
-
-        Raygui.RefInt listViewScrollIndex = new Raygui.RefInt(0);
-        int listViewActive = -1;
-
-        Raygui.RefInt listViewExScrollIndex = new Raygui.RefInt(0);
-        int listViewExActive = 2;
-        Raygui.RefInt listViewExFocus = new Raygui.RefInt(-1);
-        String[] listViewExList = { "This", "is", "a", "list view", "with", "disable", "elements", "amazing!" };
-
-        Raygui.RefString multiTextBoxText = new Raygui.RefString("Multi text box");
-        boolean multiTextBoxEditMode = false;
-
-        int colorPickerValue = RED;
-
-        Raygui.RefInt sliderValue = new Raygui.RefInt(50);
-        Raygui.RefInt sliderBarValue = new Raygui.RefInt(60);
-        float progressValue = 0.4f;
-        boolean forceSquaredChecked = false;
-
-        float alphaValue = 0.5f;
-
-        int comboBoxActive = 1;
-
-        int toggleGroupActive = 0;
-
-        boolean showWindow = false; // for GuiWindowBox
-        boolean toggle001 = false; // for GuiToggle
-
-        Raygui.Vec2 viewScroll = new Raygui.Vec2(0, 0);
-
-        boolean exitWindow = false;
-        boolean showMessageBox = false;
-
-        Raygui.RefString textInput = new Raygui.RefString("");
-        boolean showTextInputBox = false;
-
-        Raygui.RefString textInputFileName = new Raygui.RefString("");
-
-        while (!exitWindow) {
-
-            if (gui.isKeyPressed(Raygui.KEY_ESCAPE))
-                showMessageBox = !showMessageBox;
-            if (gui.isKeyDown(Raygui.KEY_LEFT_CONTROL) && gui.isKeyPressed(Raygui.KEY_S))
-                showTextInputBox = true;
-
-            gui.beginDrawing();
-
-            try {
-                int bg = gui.guiGetStyle(Raygui.DEFAULT, Raygui.BACKGROUND_COLOR);
-                gui.clearBackground(bg);
-            } catch (Throwable t) {
-                gui.clearBackground(RAYWHITE);
-            }
-
-            if (dropDown000EditMode || dropDown001EditMode)
-                gui.guiLock();
-            else
-                gui.guiUnlock();
-
-            // ----- Column 1 -----
-            gui.guiSetStyle(Raygui.CHECKBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_RIGHT);
-            forceSquaredChecked = gui.guiCheckBox(new Raygui.Rect(25, 108, 15, 15), "FORCE CHECK!", forceSquaredChecked);
-
-            gui.guiSetStyle(Raygui.TEXTBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
-            if (gui.guiSpinner(new Raygui.Rect(25, 135, 125, 30), null, spinner001Value, 0, 100, spinnerEditMode))
-                spinnerEditMode = !spinnerEditMode;
-
-            if (gui.guiValueBox(new Raygui.Rect(25, 175, 125, 30), null, valueBox002Value, 0, 100, valueBoxEditMode))
-                valueBoxEditMode = !valueBoxEditMode;
-
-            gui.guiSetStyle(Raygui.TEXTBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_LEFT);
-            if (gui.guiTextBox(new Raygui.Rect(25, 215, 125, 30), textBoxText, 64, textBoxEditMode))
-                textBoxEditMode = !textBoxEditMode;
-
-            gui.guiSetStyle(Raygui.BUTTON, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
-            if (gui.guiButton(new Raygui.Rect(25, 255, 125, 30), gui.guiIconText(Raygui.ICON_FILE_SAVE, "Save File"))) {
-                showTextInputBox = true;
-            }
-
-            gui.guiGroupBox(new Raygui.Rect(25, 300, 125, 150), "STATES");
-            gui.guiSetState(Raygui.STATE_NORMAL);
-            gui.guiButton(new Raygui.Rect(30, 310, 115, 30), "NORMAL");
-            gui.guiSetState(Raygui.STATE_FOCUSED);
-            gui.guiButton(new Raygui.Rect(30, 345, 115, 30), "FOCUSED");
-            gui.guiSetState(Raygui.STATE_PRESSED);
-            gui.guiButton(new Raygui.Rect(30, 380, 115, 30), "#15#PRESSED");
-            gui.guiSetState(Raygui.STATE_DISABLED);
-            gui.guiButton(new Raygui.Rect(30, 415, 115, 30), "DISABLED");
-            gui.guiSetState(Raygui.STATE_NORMAL);
-
-            toggle001 = gui.guiToggle(new Raygui.Rect(25, 495, 125, 30), gui.guiIconText(Raygui.ICON_CURSOR_HAND, "Toggle me"), toggle001);
-
-            comboBoxActive = gui.guiComboBox(new Raygui.Rect(25, 460, 125, 30), "ONE;TWO;THREE;FOUR", comboBoxActive);
-
-            // Dropdowns
-            gui.guiSetStyle(Raygui.DROPDOWNBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_LEFT);
-            if (gui.guiDropdownBox(new Raygui.Rect(25, 65, 125, 30), "#01#ONE;#02#TWO;#03#THREE;#04#FOUR", new Raygui.RefInt(dropdownBox001Active), dropDown001EditMode)) {
-                dropDown001EditMode = !dropDown001EditMode;
-            }
-
-            gui.guiSetStyle(Raygui.DROPDOWNBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
-            if (gui.guiDropdownBox(new Raygui.Rect(25, 25, 125, 30), "ONE;TWO;THREE", new Raygui.RefInt(dropdownBox000Active), dropDown000EditMode)) {
-                dropDown000EditMode = !dropDown000EditMode;
-            }
-
-            // ----- Column 2 -----
-            listViewActive = gui.guiListView(new Raygui.Rect(165, 25, 140, 140), "Charmander;Bulbasaur;#18#Squirtel;Pikachu;Eevee;Pidgey", listViewScrollIndex, listViewActive);
-
-            listViewExActive = gui.guiListViewEx(new Raygui.Rect(165, 180, 140, 200), listViewExList, listViewExList.length, listViewExFocus, listViewExScrollIndex,
-                    listViewExActive);
-
-            toggleGroupActive = gui.guiToggleGroup(new Raygui.Rect(165, 400, 140, 25), "#1#ONE\n#3#TWO\n#8#THREE\n#23#", toggleGroupActive);
-
-            gui.guiSetStyle(Raygui.LABEL, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
-            if (gui.guiLabelButton(new Raygui.Rect(165, 510, 125, 20), "Show Window")) {
-                showWindow = true;
-            }
-
-            // ----- Column 3 -----
-            if (gui.guiTextBoxMulti(new Raygui.Rect(320, 25, 225, 140), multiTextBoxText, 256, multiTextBoxEditMode))
-                multiTextBoxEditMode = !multiTextBoxEditMode;
-
-            colorPickerValue = gui.guiColorPicker(new Raygui.Rect(320, 185, 196, 192), null, colorPickerValue);
-
-            sliderValue.v = Math.round(gui.guiSlider(new Raygui.Rect(355, 400, 165, 20), "TEST", String.format("%2.2f", (float) sliderValue.v), sliderValue.v, -50, 100));
-            sliderBarValue.v = Math.round(gui.guiSliderBar(new Raygui.Rect(320, 430, 200, 20), null, Integer.toString(sliderBarValue.v), sliderBarValue.v, 0, 100));
-            progressValue = gui.guiProgressBar(new Raygui.Rect(320, 460, 200, 20), null, null, progressValue, 0f, 1f);
-
-            // ----- Column 4 -----
-            Raygui.Rect view = gui.guiScrollPanel(new Raygui.Rect(560, 25, 100, 160), null, new Raygui.Rect(560, 25, 200, 400), viewScroll);
-
-            gui.guiPanel(new Raygui.Rect(560, 25 + 180, 100, 160), "Panel Info");
-
-            // Dummy rec : simple placeholder “muet”
-            gui.guiDummyRec(new Raygui.Rect(560, 25 + 180 + 160 + 5, 100, 18), "dummy");
-
-            gui.guiGrid(new Raygui.Rect(560, 25 + 180 + 180, 100, 120), null, 20f, 2);
-
-            gui.guiStatusBar(new Raygui.Rect(0, gui.getScreenHeight() - 20f, gui.getScreenWidth(), 20), "This is a status bar");
-
-            alphaValue = gui.guiColorBarAlpha(new Raygui.Rect(320, 490, 200, 30), null, alphaValue);
-
-            // Quelques icônes rendues directement (GuiDrawIcon)
-            // gui.guiDrawIcon(Raygui.ICON_COLOR_PICKER, 560, 400, 2, BLACK);
-            // gui.guiDrawIcon(Raygui.ICON_FILE_SAVE, 560, 400, 2, DARKGRAY);
-            gui.guiDrawIcon(Raygui.ICON_CAMERA, 560, 515, 1, Raygui.DARKGRAY);
-            gui.guiDrawIcon(Raygui.ICON_BOX_CENTER, 580, 515, 1, Raygui.DARKGRAY);
-            gui.guiDrawIcon(Raygui.ICON_FILE_CUT, 600, 515, 1, Raygui.DARKGRAY);
-            gui.guiDrawIcon(Raygui.ICON_CRACK_POINTS, 620, 515, 1, Raygui.DARKGRAY);
-
-            // Mini fenêtre (WindowBox) au-dessus
-            if (showWindow) {
-                // Si la croix (X) est cliquée, l'appel renvoie true → on la masque
-                if (gui.guiWindowBox(new Raygui.Rect(390, 25, 200, 110), "Mini Window")) {
-                    showWindow = false;
-                } else {
-                    gui.guiLabel(new Raygui.Rect(400, 60, 200, 20), "Hello from WindowBox!");
-                    gui.guiDrawIcon(Raygui.ICON_INFO, 400, 90, 2, BLUE);
-                }
-            }
-
-            // Overlays
-            if (showMessageBox) {
-                gui.drawRectangle(0, 0, gui.getScreenWidth(), gui.getScreenHeight(), Raygui.fade(Raygui.RAYWHITE, 0.8f));
-                int result = gui.guiMessageBox(new Raygui.Rect(gui.getScreenWidth() / 2f - 125, gui.getScreenHeight() / 2f - 50, 250, 100),
-                        gui.guiIconText(Raygui.ICON_EXIT, "Close Window"), "Do you really want to exit?", "Yes;No");
-                if (result == 0 || result == 2)
-                    showMessageBox = false;
-                else if (result == 1)
-                    exitWindow = true;
-            }
-
-            if (showTextInputBox) {
-                gui.drawRectangle(0, 0, gui.getScreenWidth(), gui.getScreenHeight(), Raygui.fade(Raygui.RAYWHITE, 0.8f));
-                int result = gui.guiTextInputBox(new Raygui.Rect(gui.getScreenWidth() / 2f - 120, gui.getScreenHeight() / 2f - 60, 240, 140), "Save",
-                        gui.guiIconText(Raygui.ICON_FILE_SAVE, "Save file as..."), "Ok;Cancel", textInput, 255, null);
-                if (result == 1) {
-                    textInputFileName = textInput;
-                    System.out.println("Save file: " + textInputFileName);
-                }
-                if (result == 0 || result == 1 || result == 2) {
-                    showTextInputBox = false;
-                }
-            }
-
-            gui.endDrawing();
-
-            try {
-                Thread.sleep(16);
-            } catch (InterruptedException ignored) {
-            }
-        }
-    }
-
-    public static void main(String[] args) {
-        Raygui raygui = new Raygui();
-        raygui.demo();
-    }
+   
 
 }
