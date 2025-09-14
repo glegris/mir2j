@@ -11,7 +11,7 @@ It should be possible to do the same thing with [MIR](https://github.com/vnmakar
 The idea here is to reuse [MIR](https://github.com/vnmakarov/mir) for a much smaller footprint and generate Java sources (for easy experimentation and portability). Generating Java also keeps the door open to C# / Dart later.
 
 ```
-C / LLVM IR  →  MIR  →  Java sources  →  JVM
+C →  MIR  →  Java sources  →  JVM
 ```
 
 Because there is no ```goto``` instruction at source level in Java, control flow is expressed with a loop + switch/case over a label
@@ -25,17 +25,27 @@ while (true) {
 }
 ```
 
+## Why MIR2J? (Use Cases)
+
+- **No native bindings allowed / unknown target platforms**
+  - Deployment to environments where JNI is forbidden or native builds are impractical (e.g., sandboxes, strict IT policies).
+  - Toolchains like GWT or TeaVM where native code isn’t viable.
+- **Not enough time for a full port**
+  - Run existing C code inside a Java app quickly, without a large rewrite.
+- **Progressive migration**
+  - Translate incrementally: start with critical pieces via MIR→Java, keep the rest in C, iterate over time.
+
 ## Machine model
-- Endianness: little-endian (LE)
-- Pointer size: 64-bit (8 bytes)
-- Memory layout: DATA | STACK | HEAP in a single byte[]
-- Function pointers are modeled as small integers mapped to Java Method handles.
+- **Endianness**: little-endian (LE)
+- **Pointer size**: 64-bit (8 bytes)
+- **Memory layout**: DATA | STACK | HEAP in a single byte[]
+- **Function pointers**: small integers mapped to Java Method handles.
 
 ## Runtine
 
 The default runtime intentionally stays minimal: memcpy, memset, very limited printf, basic strlen/strcpy, a few syscalls/stubs used by tests.
 
-If you need more libc surface (and richer printf/vfprintf/…), you can link a small C standard library alongside.
+If you need more libc surface (and richer printf/vfprintf/…), you can link a small C standard library alongside the runtime.
 
 ## Build
 
@@ -70,8 +80,8 @@ or
 [MIR](https://github.com/vnmakarov/mir) is tiny and fast, making it a great IR target for lightweight toolchains. The translator stays simple and the runtime small.
 
 ## Roadmap (short)
-- Fill more libc gaps as needed (either Java-side or via a small C shim)
-- More intrinsics / syscalls as use-cases surface
+- Expand libc coverage as needed (either Java-side or via a small C shim)
+- More intrinsics / syscalls when use-cases appear
 - Performance passes once semantics are solid
 
 
