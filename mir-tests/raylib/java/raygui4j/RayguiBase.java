@@ -23940,47 +23940,47 @@ public void UnloadTexture (long _I0_texture) {
   return;
 } // End of function UnloadTexture
 
-public int getMaxCharWidth () {
+public int GetMaxCharWidth () {
   return (int) 10L;
-} // End of function getMaxCharWidth
+} // End of function GetMaxCharWidth
 
-public int getMaxCharHeight () {
+public int GetMaxCharHeight () {
   return (int) 10L;
-} // End of function getMaxCharHeight
+} // End of function GetMaxCharHeight
 
 long m2_defaultFont = mir_set_data_int(0);
 long unused_data_addr_2081 = mir_allocate(44);
 public void GetFontDefault (long _Ret_Addr) {
   long Ret_Addr = _Ret_Addr;
   long fp = 0;
-  long i_0 = 0;
-  long I_1 = 0;
-  long i_2 = 0;
+  long I_0 = 0;
+  long i_1 = 0;
+  long I_2 = 0;
   long I_3 = 0;
-  long I_4 = 0;
   long i0_baseH = 0;
-  long i_5 = 0;
+  long i_4 = 0;
   long i0_monoW = 0;
-  long i_6 = 0;
+  long i_5 = 0;
   long i0_glyphCount = 0;
   long U0_rects = 0;
+  long U_6 = 0;
   long U_7 = 0;
   long U_8 = 0;
-  long U_9 = 0;
   long U0_glyphs = 0;
+  long U_9 = 0;
   long U_10 = 0;
   long U_11 = 0;
-  long U_12 = 0;
   long i2_i = 0;
-  long i_13 = 0;
-  long I_14 = 0;
-  long i_15 = 0;
-  float f_16 = 0;
-  long I_17 = 0;
+  long i_12 = 0;
+  long I_13 = 0;
+  long i_14 = 0;
+  float f_15 = 0;
+  long I_16 = 0;
+  float f_17 = 0;
   float f_18 = 0;
-  float f_19 = 0;
-  long I_20 = 0;
-  float f_21 = 0;
+  long I_19 = 0;
+  float f_20 = 0;
+  long I_21 = 0;
   long I_22 = 0;
   long I_23 = 0;
   long I_24 = 0;
@@ -23992,10 +23992,10 @@ public void GetFontDefault (long _Ret_Addr) {
   long I_30 = 0;
   long I_31 = 0;
   long I_32 = 0;
-  long I_33 = 0;
+  long i_33 = 0;
   long i_34 = 0;
   long i_35 = 0;
-  long i_36 = 0;
+  long I_36 = 0;
   long I_37 = 0;
   long I_38 = 0;
   long I_39 = 0;
@@ -24004,96 +24004,94 @@ public void GetFontDefault (long _Ret_Addr) {
   long I_42 = 0;
   long I_43 = 0;
   long I_44 = 0;
-  long I_45 = 0;
   int mir_saved_stack_position =  mir_get_stack_position();
   int mir_label = -1;
 while (true) {
 switch (mir_label) {
 case -1:
   fp = mir_allocate(176L);
-  i_0 = printf((long) mir_get_string_ptr("[DEBUG] GetFontDefault()\n"));
-  I_1 = m2_defaultFont;
-  if ((long) mir_read_ulong(40L + I_1) == (long) 0L) { mir_label = 2254; break; }
+  I_0 = m2_defaultFont;
+  if ((long) mir_read_ulong(40L + I_0) == (long) 0L) { mir_label = 2254; break; }
 case 2255:
-  I_3 = m2_defaultFont;
-  I_4 = memcpy((long) Ret_Addr, (long) I_3, (long) 48L);
+  I_2 = m2_defaultFont;
+  I_3 = memcpy((long) Ret_Addr, (long) I_2, (long) 48L);
   mir_set_stack_position(mir_saved_stack_position);
   return;
   // Dead code: mir_label = 2256; break;
 case 2254:
 case 2256:
-  i_5 = getMaxCharHeight();
-  i0_baseH = i_5;
-  i_6 = getMaxCharWidth();
-  i0_monoW = i_6;
+  i_4 = GetMaxCharHeight();
+  i0_baseH = i_4;
+  i_5 = GetMaxCharWidth();
+  i0_monoW = i_5;
   i0_glyphCount = 128L;
-  U_8 = (long) (int) i0_glyphCount;
-  U_9 = (long) U_8 * (long) 20L;
-  U_7 = malloc((long) U_9);
-  U0_rects = U_7;
-  U_11 = (long) (int) i0_glyphCount;
-  U_12 = (long) U_11 * (long) 40L;
-  U_10 = malloc((long) U_12);
-  U0_glyphs = U_10;
+  U_7 = (long) (int) i0_glyphCount;
+  U_8 = (long) U_7 * (long) 20L;
+  U_6 = malloc((long) U_8);
+  U0_rects = U_6;
+  U_10 = (long) (int) i0_glyphCount;
+  U_11 = (long) U_10 * (long) 40L;
+  U_9 = malloc((long) U_11);
+  U0_glyphs = U_9;
   i2_i = 0L;
   if ((int) i2_i >= (int) i0_glyphCount) { mir_label = 2257; break; }
 case 2258:
-  I_14 = (long) (int) i2_i;
-  i_15 = (int) i2_i * (int) i0_monoW;
-  I_17 = (long) (int) i_15;
-  f_16 = (float) I_17;
-  mir_write_float(88L + fp, f_16);
-  f_18 = (float) 0L;
-  mir_write_float(92L + fp, f_18);
-  I_20 = (long) (int) i0_monoW;
-  f_19 = (float) I_20;
-  mir_write_float(96L + fp, f_19);
-  I_22 = (long) (int) i0_baseH;
-  f_21 = (float) I_22;
-  mir_write_float(100L + fp, f_21);
-  I_24 = (long) fp + (long) 104L;
-  I_23 = memset((long) I_24, (int) 0L, (long) 4L);
-  I_25 = (long) I_14 * (long) 20L;
-  I_25 = (long) I_25 + (long) U0_rects;
-  I_27 = (long) fp + (long) 88L;
-  I_26 = memcpy((long) I_25, (long) I_27, (long) 20L);
-  I_28 = (long) (int) i2_i;
+  I_13 = (long) (int) i2_i;
+  i_14 = (int) i2_i * (int) i0_monoW;
+  I_16 = (long) (int) i_14;
+  f_15 = (float) I_16;
+  mir_write_float(88L + fp, f_15);
+  f_17 = (float) 0L;
+  mir_write_float(92L + fp, f_17);
+  I_19 = (long) (int) i0_monoW;
+  f_18 = (float) I_19;
+  mir_write_float(96L + fp, f_18);
+  I_21 = (long) (int) i0_baseH;
+  f_20 = (float) I_21;
+  mir_write_float(100L + fp, f_20);
+  I_23 = (long) fp + (long) 104L;
+  I_22 = memset((long) I_23, (int) 0L, (long) 4L);
+  I_24 = (long) I_13 * (long) 20L;
+  I_24 = (long) I_24 + (long) U0_rects;
+  I_26 = (long) fp + (long) 88L;
+  I_25 = memcpy((long) I_24, (long) I_26, (long) 20L);
+  I_27 = (long) (int) i2_i;
   mir_write_int(136L + fp, i2_i);
   mir_write_int(140L + fp, 0L);
   mir_write_int(144L + fp, 0L);
   mir_write_int(148L + fp, i0_monoW);
   mir_write_ulong(152L + fp, 0L);
-  I_30 = (long) fp + (long) 160L;
-  I_29 = memset((long) I_30, (int) 0L, (long) 16L);
-  I_31 = (long) I_28 * (long) 40L;
-  I_31 = (long) I_31 + (long) U0_glyphs;
-  I_33 = (long) fp + (long) 136L;
-  I_32 = memcpy((long) I_31, (long) I_33, (long) 40L);
+  I_29 = (long) fp + (long) 160L;
+  I_28 = memset((long) I_29, (int) 0L, (long) 16L);
+  I_30 = (long) I_27 * (long) 40L;
+  I_30 = (long) I_30 + (long) U0_glyphs;
+  I_32 = (long) fp + (long) 136L;
+  I_31 = memcpy((long) I_30, (long) I_32, (long) 40L);
 case 2259:
-  i_34 = i2_i;
-  i_34 = (int) i_34 + (int) 1L;
-  i2_i = i_34;
+  i_33 = i2_i;
+  i_33 = (int) i_33 + (int) 1L;
+  i2_i = i_33;
   if ((int) i2_i < (int) i0_glyphCount) { mir_label = 2258; break; }
 case 2257:
   mir_write_uint(fp, 1L);
-  i_36 = (int) i0_monoW * (int) i0_glyphCount;
-  mir_write_int(4L + fp, i_36);
+  i_35 = (int) i0_monoW * (int) i0_glyphCount;
+  mir_write_int(4L + fp, i_35);
   mir_write_int(8L + fp, i0_baseH);
   mir_write_int(12L + fp, 1L);
   mir_write_int(16L + fp, 0L);
-  I_37 = m2_defaultFont;
+  I_36 = m2_defaultFont;
   mir_write_int(40L + fp, i0_baseH);
   mir_write_int(44L + fp, i0_glyphCount);
-  I_39 = (long) fp + (long) 48L;
-  I_38 = memcpy((long) I_39, (long) fp, (long) 20L);
-  I_41 = (long) fp + (long) 68L;
-  I_40 = memset((long) I_41, (int) 0L, (long) 4L);
+  I_38 = (long) fp + (long) 48L;
+  I_37 = memcpy((long) I_38, (long) fp, (long) 20L);
+  I_40 = (long) fp + (long) 68L;
+  I_39 = memset((long) I_40, (int) 0L, (long) 4L);
   mir_write_ulong(72L + fp, U0_rects);
   mir_write_ulong(80L + fp, U0_glyphs);
-  I_43 = (long) fp + (long) 40L;
-  I_42 = memcpy((long) I_37, (long) I_43, (long) 48L);
-  I_44 = m2_defaultFont;
-  I_45 = memcpy((long) Ret_Addr, (long) I_44, (long) 48L);
+  I_42 = (long) fp + (long) 40L;
+  I_41 = memcpy((long) I_36, (long) I_42, (long) 48L);
+  I_43 = m2_defaultFont;
+  I_44 = memcpy((long) Ret_Addr, (long) I_43, (long) 48L);
   mir_set_stack_position(mir_saved_stack_position);
   return;
 } // End of switch

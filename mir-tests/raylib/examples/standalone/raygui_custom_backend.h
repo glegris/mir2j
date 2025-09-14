@@ -219,20 +219,20 @@ void UnloadTexture(Texture2D texture)
 //-------------------------------------------------------------------------------
 // USED IN: GuiLoadStyleDefault()
 
-int getMaxCharWidth()  { return 10; }
-int getMaxCharHeight() { return 10; }
+int GetMaxCharWidth()  { return 10; }
+int GetMaxCharHeight() { return 10; }
 
 static Font defaultFont = { 0 };
 
 Font GetFontDefault(void)
 {
-    printf("[DEBUG] GetFontDefault()\n");
+    //printf("[DEBUG] GetFontDefault()\n");
     
     if (defaultFont.glyphs != NULL) {
         return defaultFont;
     }
-    int baseH = getMaxCharHeight();
-    int monoW = getMaxCharWidth();
+    int baseH = GetMaxCharHeight();
+    int monoW = GetMaxCharWidth();
     int glyphCount = 128;
     
     Rectangle* rects = malloc(glyphCount * sizeof(Rectangle)); 

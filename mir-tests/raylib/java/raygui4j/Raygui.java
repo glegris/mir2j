@@ -1,1145 +1,1770 @@
 package raygui4j;
 
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.GradientPaint;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
-import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Vector;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
+public class Raygui extends RayguiBase implements Backend.InputSink {
 
-public class Raygui extends RayguiBase {
+    public static final int KEY_NULL = 0; // Key: NULL; used for no key pressed
+    // Alphanumeric keys
+    public static final int KEY_APOSTROPHE = 39; // Key: '
+    public static final int KEY_COMMA = 44; // Key: ,
+    public static final int KEY_MINUS = 45; // Key: -
+    public static final int KEY_PERIOD = 46; // Key: .
+    public static final int KEY_SLASH = 47; // Key: /
+    public static final int KEY_ZERO = 48; // Key: 0
+    public static final int KEY_ONE = 49; // Key: 1
+    public static final int KEY_TWO = 50; // Key: 2
+    public static final int KEY_THREE = 51; // Key: 3
+    public static final int KEY_FOUR = 52; // Key: 4
+    public static final int KEY_FIVE = 53; // Key: 5
+    public static final int KEY_SIX = 54; // Key: 6
+    public static final int KEY_SEVEN = 55; // Key: 7
+    public static final int KEY_EIGHT = 56; // Key: 8
+    public static final int KEY_NINE = 57; // Key: 9
+    public static final int KEY_SEMICOLON = 59; // Key: ;
+    public static final int KEY_EQUAL = 61; // Key: =
+    public static final int KEY_A = 65; // Key: A | a
+    public static final int KEY_B = 66; // Key: B | b
+    public static final int KEY_C = 67; // Key: C | c
+    public static final int KEY_D = 68; // Key: D | d
+    public static final int KEY_E = 69; // Key: E | e
+    public static final int KEY_F = 70; // Key: F | f
+    public static final int KEY_G = 71; // Key: G | g
+    public static final int KEY_H = 72; // Key: H | h
+    public static final int KEY_I = 73; // Key: I | i
+    public static final int KEY_J = 74; // Key: J | j
+    public static final int KEY_K = 75; // Key: K | k
+    public static final int KEY_L = 76; // Key: L | l
+    public static final int KEY_M = 77; // Key: M | m
+    public static final int KEY_N = 78; // Key: N | n
+    public static final int KEY_O = 79; // Key: O | o
+    public static final int KEY_P = 80; // Key: P | p
+    public static final int KEY_Q = 81; // Key: Q | q
+    public static final int KEY_R = 82; // Key: R | r
+    public static final int KEY_S = 83; // Key: S | s
+    public static final int KEY_T = 84; // Key: T | t
+    public static final int KEY_U = 85; // Key: U | u
+    public static final int KEY_V = 86; // Key: V | v
+    public static final int KEY_W = 87; // Key: W | w
+    public static final int KEY_X = 88; // Key: X | x
+    public static final int KEY_Y = 89; // Key: Y | y
+    public static final int KEY_Z = 90; // Key: Z | z
+    public static final int KEY_LEFT_BRACKET = 91; // Key: [
+    public static final int KEY_BACKSLASH = 92; // Key: '\'
+    public static final int KEY_RIGHT_BRACKET = 93; // Key: ]
+    public static final int KEY_GRAVE = 96; // Key: `
+    // Function keys
+    public static final int KEY_SPACE = 32; // Key: Space
+    public static final int KEY_ESCAPE = 256; // Key: Esc
+    public static final int KEY_ENTER = 257; // Key: Enter
+    public static final int KEY_TAB = 258; // Key: Tab
+    public static final int KEY_BACKSPACE = 259; // Key: Backspace
+    public static final int KEY_INSERT = 260; // Key: Ins
+    public static final int KEY_DELETE = 261; // Key: Del
+    public static final int KEY_RIGHT = 262; // Key: Cursor right
+    public static final int KEY_LEFT = 263; // Key: Cursor left
+    public static final int KEY_DOWN = 264; // Key: Cursor down
+    public static final int KEY_UP = 265; // Key: Cursor up
+    public static final int KEY_PAGE_UP = 266; // Key: Page up
+    public static final int KEY_PAGE_DOWN = 267; // Key: Page down
+    public static final int KEY_HOME = 268; // Key: Home
+    public static final int KEY_END = 269; // Key: End
+    public static final int KEY_CAPS_LOCK = 280; // Key: Caps lock
+    public static final int KEY_SCROLL_LOCK = 281; // Key: Scroll down
+    public static final int KEY_NUM_LOCK = 282; // Key: Num lock
+    public static final int KEY_PRINT_SCREEN = 283; // Key: Print screen
+    public static final int KEY_PAUSE = 284; // Key: Pause
+    public static final int KEY_F1 = 290; // Key: F1
+    public static final int KEY_F2 = 291; // Key: F2
+    public static final int KEY_F3 = 292; // Key: F3
+    public static final int KEY_F4 = 293; // Key: F4
+    public static final int KEY_F5 = 294; // Key: F5
+    public static final int KEY_F6 = 295; // Key: F6
+    public static final int KEY_F7 = 296; // Key: F7
+    public static final int KEY_F8 = 297; // Key: F8
+    public static final int KEY_F9 = 298; // Key: F9
+    public static final int KEY_F10 = 299; // Key: F10
+    public static final int KEY_F11 = 300; // Key: F11
+    public static final int KEY_F12 = 301; // Key: F12
+    public static final int KEY_LEFT_SHIFT = 340; // Key: Shift left
+    public static final int KEY_LEFT_CONTROL = 341; // Key: Control left
+    public static final int KEY_LEFT_ALT = 342; // Key: Alt left
+    public static final int KEY_LEFT_SUPER = 343; // Key: Super left
+    public static final int KEY_RIGHT_SHIFT = 344; // Key: Shift right
+    public static final int KEY_RIGHT_CONTROL = 345; // Key: Control right
+    public static final int KEY_RIGHT_ALT = 346; // Key: Alt right
+    public static final int KEY_RIGHT_SUPER = 347; // Key: Super right
+    public static final int KEY_KB_MENU = 348; // Key: KB menu
+    // Keypad keys
+    public static final int KEY_KP_0 = 320; // Key: Keypad 0
+    public static final int KEY_KP_1 = 321; // Key: Keypad 1
+    public static final int KEY_KP_2 = 322; // Key: Keypad 2
+    public static final int KEY_KP_3 = 323; // Key: Keypad 3
+    public static final int KEY_KP_4 = 324; // Key: Keypad 4
+    public static final int KEY_KP_5 = 325; // Key: Keypad 5
+    public static final int KEY_KP_6 = 326; // Key: Keypad 6
+    public static final int KEY_KP_7 = 327; // Key: Keypad 7
+    public static final int KEY_KP_8 = 328; // Key: Keypad 8
+    public static final int KEY_KP_9 = 329; // Key: Keypad 9
+    public static final int KEY_KP_DECIMAL = 330; // Key: Keypad .
+    public static final int KEY_KP_DIVIDE = 331; // Key: Keypad /
+    public static final int KEY_KP_MULTIPLY = 332; // Key: Keypad *
+    public static final int KEY_KP_SUBTRACT = 333; // Key: Keypad -
+    public static final int KEY_KP_ADD = 334; // Key: Keypad +
+    public static final int KEY_KP_ENTER = 335; // Key: Keypad Enter
+    public static final int KEY_KP_EQUAL = 336; // Key: Keypad =
+    // Android key buttons
+    public static final int KEY_BACK = 4; // Key: Android back button
+    public static final int KEY_MENU = 82; // Key: Android menu button
+    public static final int KEY_VOLUME_UP = 24; // Key: Android volume up button
+    public static final int KEY_VOLUME_DOWN = 25; // Key: Android volume down button
 
-	public static final int KEY_NULL = 0; // Key: NULL; used for no key pressed
-	// Alphanumeric keys
-	public static final int KEY_APOSTROPHE = 39; // Key: '
-	public static final int KEY_COMMA = 44; // Key: ,
-	public static final int KEY_MINUS = 45; // Key: -
-	public static final int KEY_PERIOD = 46; // Key: .
-	public static final int KEY_SLASH = 47; // Key: /
-	public static final int KEY_ZERO = 48; // Key: 0
-	public static final int KEY_ONE = 49; // Key: 1
-	public static final int KEY_TWO = 50; // Key: 2
-	public static final int KEY_THREE = 51; // Key: 3
-	public static final int KEY_FOUR = 52; // Key: 4
-	public static final int KEY_FIVE = 53; // Key: 5
-	public static final int KEY_SIX = 54; // Key: 6
-	public static final int KEY_SEVEN = 55; // Key: 7
-	public static final int KEY_EIGHT = 56; // Key: 8
-	public static final int KEY_NINE = 57; // Key: 9
-	public static final int KEY_SEMICOLON = 59; // Key: ;
-	public static final int KEY_EQUAL = 61; // Key: =
-	public static final int KEY_A = 65; // Key: A | a
-	public static final int KEY_B = 66; // Key: B | b
-	public static final int KEY_C = 67; // Key: C | c
-	public static final int KEY_D = 68; // Key: D | d
-	public static final int KEY_E = 69; // Key: E | e
-	public static final int KEY_F = 70; // Key: F | f
-	public static final int KEY_G = 71; // Key: G | g
-	public static final int KEY_H = 72; // Key: H | h
-	public static final int KEY_I = 73; // Key: I | i
-	public static final int KEY_J = 74; // Key: J | j
-	public static final int KEY_K = 75; // Key: K | k
-	public static final int KEY_L = 76; // Key: L | l
-	public static final int KEY_M = 77; // Key: M | m
-	public static final int KEY_N = 78; // Key: N | n
-	public static final int KEY_O = 79; // Key: O | o
-	public static final int KEY_P = 80; // Key: P | p
-	public static final int KEY_Q = 81; // Key: Q | q
-	public static final int KEY_R = 82; // Key: R | r
-	public static final int KEY_S = 83; // Key: S | s
-	public static final int KEY_T = 84; // Key: T | t
-	public static final int KEY_U = 85; // Key: U | u
-	public static final int KEY_V = 86; // Key: V | v
-	public static final int KEY_W = 87; // Key: W | w
-	public static final int KEY_X = 88; // Key: X | x
-	public static final int KEY_Y = 89; // Key: Y | y
-	public static final int KEY_Z = 90; // Key: Z | z
-	public static final int KEY_LEFT_BRACKET = 91; // Key: [
-	public static final int KEY_BACKSLASH = 92; // Key: '\'
-	public static final int KEY_RIGHT_BRACKET = 93; // Key: ]
-	public static final int KEY_GRAVE = 96; // Key: `
-	// Function keys
-	public static final int KEY_SPACE = 32; // Key: Space
-	public static final int KEY_ESCAPE = 256; // Key: Esc
-	public static final int KEY_ENTER = 257; // Key: Enter
-	public static final int KEY_TAB = 258; // Key: Tab
-	public static final int KEY_BACKSPACE = 259; // Key: Backspace
-	public static final int KEY_INSERT = 260; // Key: Ins
-	public static final int KEY_DELETE = 261; // Key: Del
-	public static final int KEY_RIGHT = 262; // Key: Cursor right
-	public static final int KEY_LEFT = 263; // Key: Cursor left
-	public static final int KEY_DOWN = 264; // Key: Cursor down
-	public static final int KEY_UP = 265; // Key: Cursor up
-	public static final int KEY_PAGE_UP = 266; // Key: Page up
-	public static final int KEY_PAGE_DOWN = 267; // Key: Page down
-	public static final int KEY_HOME = 268; // Key: Home
-	public static final int KEY_END = 269; // Key: End
-	public static final int KEY_CAPS_LOCK = 280; // Key: Caps lock
-	public static final int KEY_SCROLL_LOCK = 281; // Key: Scroll down
-	public static final int KEY_NUM_LOCK = 282; // Key: Num lock
-	public static final int KEY_PRINT_SCREEN = 283; // Key: Print screen
-	public static final int KEY_PAUSE = 284; // Key: Pause
-	public static final int KEY_F1 = 290; // Key: F1
-	public static final int KEY_F2 = 291; // Key: F2
-	public static final int KEY_F3 = 292; // Key: F3
-	public static final int KEY_F4 = 293; // Key: F4
-	public static final int KEY_F5 = 294; // Key: F5
-	public static final int KEY_F6 = 295; // Key: F6
-	public static final int KEY_F7 = 296; // Key: F7
-	public static final int KEY_F8 = 297; // Key: F8
-	public static final int KEY_F9 = 298; // Key: F9
-	public static final int KEY_F10 = 299; // Key: F10
-	public static final int KEY_F11 = 300; // Key: F11
-	public static final int KEY_F12 = 301; // Key: F12
-	public static final int KEY_LEFT_SHIFT = 340; // Key: Shift left
-	public static final int KEY_LEFT_CONTROL = 341; // Key: Control left
-	public static final int KEY_LEFT_ALT = 342; // Key: Alt left
-	public static final int KEY_LEFT_SUPER = 343; // Key: Super left
-	public static final int KEY_RIGHT_SHIFT = 344; // Key: Shift right
-	public static final int KEY_RIGHT_CONTROL = 345; // Key: Control right
-	public static final int KEY_RIGHT_ALT = 346; // Key: Alt right
-	public static final int KEY_RIGHT_SUPER = 347; // Key: Super right
-	public static final int KEY_KB_MENU = 348; // Key: KB menu
-	// Keypad keys
-	public static final int KEY_KP_0 = 320; // Key: Keypad 0
-	public static final int KEY_KP_1 = 321; // Key: Keypad 1
-	public static final int KEY_KP_2 = 322; // Key: Keypad 2
-	public static final int KEY_KP_3 = 323; // Key: Keypad 3
-	public static final int KEY_KP_4 = 324; // Key: Keypad 4
-	public static final int KEY_KP_5 = 325; // Key: Keypad 5
-	public static final int KEY_KP_6 = 326; // Key: Keypad 6
-	public static final int KEY_KP_7 = 327; // Key: Keypad 7
-	public static final int KEY_KP_8 = 328; // Key: Keypad 8
-	public static final int KEY_KP_9 = 329; // Key: Keypad 9
-	public static final int KEY_KP_DECIMAL = 330; // Key: Keypad .
-	public static final int KEY_KP_DIVIDE = 331; // Key: Keypad /
-	public static final int KEY_KP_MULTIPLY = 332; // Key: Keypad *
-	public static final int KEY_KP_SUBTRACT = 333; // Key: Keypad -
-	public static final int KEY_KP_ADD = 334; // Key: Keypad +
-	public static final int KEY_KP_ENTER = 335; // Key: Keypad Enter
-	public static final int KEY_KP_EQUAL = 336; // Key: Keypad =
-	// Android key buttons
-	public static final int KEY_BACK = 4; // Key: Android back button
-	public static final int KEY_MENU = 82; // Key: Android menu button
-	public static final int KEY_VOLUME_UP = 24; // Key: Android volume up button
-	public static final int KEY_VOLUME_DOWN = 25; // Key: Android volume down button
+    private static final boolean LOG_ENABLED = true;
 
-	private static final boolean LOG_ENABLED = true;
-		
-	// Key state
-	private static final int KEY_CAP = 512;  // give us some headroom
-	// Edge accumulators between frames (protected by a lock)
-	private final Object keyLock = new Object();
-	private final int[]  keyPressAcc    = new int[KEY_CAP];
-	private final int[]  keyReleaseAcc  = new int[KEY_CAP];
-	private final boolean[] keyDownState = new boolean[KEY_CAP]; // current state (EDT)
-	private final boolean[] keyDownFrame = new boolean[KEY_CAP]; // snapshot for the frame
-	private final boolean[] keyPressEdgeFrame   = new boolean[KEY_CAP]; // visible 1 frame
-	private final boolean[] keyReleaseEdgeFrame = new boolean[KEY_CAP]; // visible 1 frame
+    // Gui control state
+    public static final int STATE_NORMAL = 0;
+    public static final int STATE_FOCUSED = 1;
+    public static final int STATE_PRESSED = 2;
+    public static final int STATE_DISABLED = 3;
 
-	// Mouse state (raylib indices: 0=LEFT,1=RIGHT,2=MIDDLE,3=SIDE,4=EXTRA)
-	private static final int MOUSE_BUTTONS = 8;
-	// Edge accumulators between frames (protected by a lock)
-	private final Object mouseLock = new Object();
-	private final int[]  mousePressAcc   = new int[MOUSE_BUTTONS];
-	private final int[]  mouseReleaseAcc = new int[MOUSE_BUTTONS];
-	// Current state (EDT side) and snapshot readable by the frame
-	private final boolean[] mouseDownState  = new boolean[MOUSE_BUTTONS];
-	private final boolean[] mouseDownFrame  = new boolean[MOUSE_BUTTONS]; // snapshot for the frame
-	// Edges visible ONLY during the current frame
-	private static final int EDGE_NONE = -1;
-	private final boolean[] mousePressEdgeFrame   = new boolean[MOUSE_BUTTONS];
-	private final boolean[] mouseReleaseEdgeFrame = new boolean[MOUSE_BUTTONS];
+    // Gui control text alignment
+    public static final int TEXT_ALIGN_LEFT = 0;
+    public static final int TEXT_ALIGN_CENTER = 1;
+    public static final int TEXT_ALIGN_RIGHT = 2;
 
-	private volatile int mouseX, mouseY;
-	private final Vector<Character> charQueue = new Vector<>();
+    // Gui controls
+    public static final int DEFAULT = 0;
+    public static final int LABEL = 1; // Also: LABELBUTTON
+    public static final int BUTTON = 2;
+    public static final int TOGGLE = 3; // Also: TOGGLEGROUP
+    public static final int SLIDER = 4; // Also: SLIDERBAR
+    public static final int PROGRESSBAR = 5;
+    public static final int CHECKBOX = 6;
+    public static final int COMBOBOX = 7;
+    public static final int DROPDOWNBOX = 8;
+    public static final int TEXTBOX = 9; // Also: TEXTBOXMULTI
+    public static final int VALUEBOX = 10;
+    public static final int SPINNER = 11; // Uses: BUTTON, VALUEBOX
+    public static final int LISTVIEW = 12;
+    public static final int COLORPICKER = 13;
+    public static final int SCROLLBAR = 14;
+    public static final int STATUSBAR = 15;
 
-	BufferedImage offscreenSurface;
-	
-	private Font defaultBaseFont = new Font(Font.MONOSPACED, Font.PLAIN, 10); // Only support monospaced fonts for now
-    private float lastFontSize;
-    private Font sizedFont;
-    
-	private JFrame frame;
-	private JPanel panel;
-	private Graphics graphics;
+    // Gui base properties
+    public static final int BORDER_COLOR_NORMAL = 0;
+    public static final int BASE_COLOR_NORMAL = 1;
+    public static final int TEXT_COLOR_NORMAL = 2;
+    public static final int BORDER_COLOR_FOCUSED = 3;
+    public static final int BASE_COLOR_FOCUSED = 4;
+    public static final int TEXT_COLOR_FOCUSED = 5;
+    public static final int BORDER_COLOR_PRESSED = 6;
+    public static final int BASE_COLOR_PRESSED = 7;
+    public static final int TEXT_COLOR_PRESSED = 8;
+    public static final int BORDER_COLOR_DISABLED = 9;
+    public static final int BASE_COLOR_DISABLED = 10;
+    public static final int TEXT_COLOR_DISABLED = 11;
+    public static final int BORDER_WIDTH = 12;
+    public static final int TEXT_PADDING = 13;
+    public static final int TEXT_ALIGNMENT = 14;
+    public static final int RESERVED = 15;
 
+    // Gui default properties
+    public static final int TEXT_SIZE = 16;
+    public static final int TEXT_SPACING = 17;
+    public static final int LINE_COLOR = 18;
+    public static final int BACKGROUND_COLOR = 19;
 
-	//AWTEventConverter converter;
+    // GuiToggleProperty
+    public static final int GROUP_PADDING = 16;
 
-	@Override
-	public void InitWindow(int screenWidth, int screenHeight, long screenNameAddr) {
-	    initEdges();
-		//super.InitWindow(screenWidth, screenHeight, screenNameAddr);
-		offscreenSurface = new BufferedImage(screenWidth, screenHeight, BufferedImage.TYPE_INT_RGB);
-		graphics = offscreenSurface.createGraphics();
-		//graphics.setFont(defaultFont);
-		AWTEventConverter converter = new AWTEventConverter();
-		panel = createPanel(converter);
-		panel.addComponentListener(converter);
-		String screenName = getStringFromMemory(screenNameAddr);
-		frame = new JFrame(screenName);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		//frame.setResizable(false);
-		frame.addWindowListener(converter);
-		frame.add(panel);
-		frame.pack();
-		frame.setVisible(true);
-		panel.requestFocus();
-	}
-	
-	private void initEdges() {
-	    Arrays.fill(keyPressAcc, EDGE_NONE);
-	    Arrays.fill(keyReleaseAcc, EDGE_NONE);
-	    Arrays.fill(keyDownState, false);
-	    Arrays.fill(mousePressAcc, EDGE_NONE);
-	    Arrays.fill(mouseReleaseAcc, EDGE_NONE);
-	    Arrays.fill(mouseDownState, false);
-	}
+    // GuiSliderProperty
+    public static final int SLIDER_WIDTH = 16;
+    public static final int SLIDER_PADDING = 17;
 
-	@Override
-	public int GetScreenWidth() {
-		return offscreenSurface.getWidth();
-	}
+    // GuiProgressBarProperty
+    public static final int PROGRESS_PADDING = 16;
 
-	@Override
-	public int GetScreenHeight() {
-		//return super.GetScreenHeight();
-		return offscreenSurface.getHeight();
-	}
+    // GuiScrollBarProperty
+    public static final int ARROWS_SIZE = 16;
+    public static final int ARROWS_VISIBLE = 17;
+    public static final int SCROLL_SLIDER_PADDING = 18;
+    public static final int SCROLL_SLIDER_SIZE = 19;
+    public static final int SCROLL_PADDING = 20;
+    public static final int SCROLL_SPEED = 21;
 
-	private int convertRGBAToARGB(int rgba) {
-	    // rgba is expected as 0xRRGGBBAA (as produced by ColorToInt in raylib)
-	    int r = (rgba >>> 24) & 0xFF;
-	    int g = (rgba >>> 16) & 0xFF;
-	    int b = (rgba >>>  8) & 0xFF;
-	    int a = (rgba       ) & 0xFF;
-	    return (a << 24) | (r << 16) | (g << 8) | b;
-	}
+    // GuiCheckBoxProperty
+    public static final int CHECK_PADDING = 16;
 
-	private void drawRectangle(int x, int y, int width, int height, int rgba) {
-		int argb = convertRGBAToARGB(rgba);
-		graphics.setColor(new java.awt.Color(argb));
-		graphics.fillRect(x, y, width, height);
-	}
+    // GuiComboBoxProperty
+    public static final int COMBO_BUTTON_WIDTH = 16;
+    public static final int COMBO_BUTTON_SPACING = 17;
 
-	@Override
-	public void ClearBackground(long colorAddr) {
-		//super.ClearBackground(colorAddr);
-		int rgba = ColorToInt(colorAddr);
-		int argb = convertRGBAToARGB(rgba);
-		graphics.setColor(new java.awt.Color(argb));
-		graphics.fillRect(0, 0, offscreenSurface.getWidth(), offscreenSurface.getHeight());
-	}
+    // GuiDropdownBoxProperty
+    public static final int ARROW_PADDING = 16;
+    public static final int DROPDOWN_ITEMS_SPACING = 17;
 
-	@Override
-	public void DrawRectangle(int x, int y, int width, int height, long colorAddr) {
-		//super.DrawRectangle(x, y, width, height, colorAddr);
-		int rgba = ColorToInt(colorAddr);
-		drawRectangle(x, y, width, height, rgba);
-	}
+    // GuiTextBoxProperty
+    public static final int TEXT_INNER_PADDING = 16;
+    public static final int TEXT_LINES_SPACING = 17;
 
-	@Override
-	public void DrawRectangleGradientEx(long rectangleAddr, long color1Addr, long color2Addr, long color3Addr, long color4Addr) {
-		// TODO Auto-generated method stub
-		//super.DrawRectangleGradientEx(_I0_rec, _I0_col1, _I0_col2, _I0_col3, _I0_col4);
-		// TODO: See AWT LinearGradientPaint
-		int rgba1 = ColorToInt(color1Addr);
-		int rgba2 = ColorToInt(color2Addr);
-		int rgba3 = ColorToInt(color3Addr);
-		int rgba4 = ColorToInt(color4Addr);
-		Color color1 = new Color(rgba1);
-		//System.out.println(color1);
-		Color color2 = new Color(rgba2);
-		Color color3 = new Color(rgba3);
-		Color color4 = new Color(rgba4);
-		int x = (int) mir_read_float(rectangleAddr);
-		int y = (int) mir_read_float(rectangleAddr + 4);
-		int w = (int) mir_read_float(rectangleAddr + 8);
-		int h = (int) mir_read_float(rectangleAddr + 12);
+    // GuiSpinnerProperty
+    public static final int SPIN_BUTTON_WIDTH = 16;
+    public static final int SPIN_BUTTON_SPACING = 17;
 
-        // Works but slow (TODO: add a cache) 
-//		Color pointColor = new Color();
-//		for (int j = 0; j < h; j++) {
-//			float fractionY =  ((float) j) / h;
-//			for (int i = 0; i < w; i++) {
-//				float fractionX = ((float) i) / w;
-//				bilinearInterpolateColor(pointColor, color1, color4, color2, color3, fractionX, fractionY);
-//				java.awt.Color c = new java.awt.Color(pointColor.red, pointColor.green, pointColor.blue, pointColor.alpha);
-//				graphics.setColor(c);
-//				graphics.drawLine(x + i, y + j, x + i, y + j);
-//			}
-//		}
+    // GuiListViewProperty
+    public static final int LIST_ITEMS_HEIGHT = 16;
+    public static final int LIST_ITEMS_SPACING = 17;
+    public static final int SCROLLBAR_WIDTH = 18;
+    public static final int SCROLLBAR_SIDE = 19;
 
-		final java.awt.Graphics2D g2D = (Graphics2D) graphics.create();
-		g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		Color pointColor1 = new Color();
-		Color pointColor2 = new Color();
-		for (int j = 0; j < h; j++) {
-			float fractionY = ((float) j) / h;
-			bilinearInterpolateColor(pointColor1, color1, color4, color2, color3, 0, fractionY);
-			bilinearInterpolateColor(pointColor2, color1, color4, color2, color3, 1.0f, fractionY);
-			java.awt.Color c1 = new java.awt.Color(pointColor1.red, pointColor1.green, pointColor1.blue, pointColor1.alpha);
-			java.awt.Color c2 = new java.awt.Color(pointColor2.red, pointColor2.green, pointColor2.blue, pointColor2.alpha);
-			GradientPaint paint = new GradientPaint(x, y + j, c1, x + w, y + j, c2);
-			g2D.setPaint(paint);
-			Rectangle rect = new Rectangle(x, y + j, w, 1);
-			g2D.fill(rect);
-		}
-		g2D.dispose();
+    // GuiColorPickerProperty
+    public static final int COLOR_SELECTOR_SIZE = 16;
+    public static final int HUEBAR_WIDTH = 17;
+    public static final int HUEBAR_PADDING = 18;
+    public static final int HUEBAR_SELECTOR_HEIGHT = 19;
+    public static final int HUEBAR_SELECTOR_OVERFLOW = 20;
 
-		// Doesn't work as expected
-//		final java.awt.Graphics2D g2D = (Graphics2D) graphics.create();
-//		g2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-//		java.awt.Color c1 = new java.awt.Color(color1.red, color1.green, color1.blue, color1.alpha);
-//		java.awt.Color c2 = new java.awt.Color(color2.red, color2.green, color2.blue, color2.alpha);
-//		java.awt.Color c3 = new java.awt.Color(color3.red, color3.green, color3.blue, color3.alpha);
-//		java.awt.Color c4 = new java.awt.Color(color4.red, color4.green, color4.blue, color4.alpha);
-//		Rectangle rect = new Rectangle(x, y, w, h);
-//		BiLinearGradientPaint BILINEAR_GRADIENT = new BiLinearGradientPaint(rect, c1, c4, c2, c3);
-//		g2D.setPaint(BILINEAR_GRADIENT);
-//		g2D.fill(rect);
-//		g2D.dispose();
+    private static final int LIGHTGRAY = RGBA(200, 200, 200, 255);
+    private static final int GRAY = RGBA(130, 130, 130, 255);
+    private static final int DARKGRAY = RGBA(80, 80, 80, 255);
+    private static final int YELLOW = RGBA(253, 249, 0, 255);
+    private static final int GOLD = RGBA(255, 203, 0, 255);
+    private static final int ORANGE = RGBA(255, 161, 0, 255);
+    private static final int PINK = RGBA(255, 109, 194, 255);
+    private static final int RED = RGBA(230, 41, 55, 255);
+    private static final int MAROON = RGBA(190, 33, 55, 255);
+    private static final int GREEN = RGBA(0, 228, 48, 255);
+    private static final int LIME = RGBA(0, 158, 47, 255);
+    private static final int DARKGREEN = RGBA(0, 117, 44, 255);
+    private static final int SKYBLUE = RGBA(102, 191, 255, 255);
+    private static final int BLUE = RGBA(0, 121, 241, 255);
+    private static final int DARKBLUE = RGBA(0, 82, 172, 255);
+    private static final int PURPLE = RGBA(200, 122, 255, 255);
+    private static final int VIOLET = RGBA(135, 60, 190, 255);
+    private static final int DARKPURPLE = RGBA(112, 31, 126, 255);
+    private static final int BEIGE = RGBA(211, 176, 131, 255);
+    private static final int BROWN = RGBA(127, 106, 79, 255);
+    private static final int DARKBROWN = RGBA(76, 63, 47, 255);
+    private static final int WHITE = RGBA(255, 255, 255, 255);
+    private static final int BLACK = RGBA(0, 0, 0, 255);
+    private static final int BLANK = RGBA(0, 0, 0, 0);
+    private static final int MAGENTA = RGBA(255, 0, 255, 255);
+    private static final int RAYWHITE = RGBA(245, 245, 245, 255);
 
-//		System.out.println("[DEBUG] DrawRectangleGradientEx(): x=" + x + " y=" + y + " w=" + w + " h=" + h + " c1=" + Integer.toHexString(rgba1) + " c2=" + Integer.toHexString(rgba2) + " c3="
-//				+ Integer.toHexString(rgba3) + " c4=" + Integer.toHexString(rgba4));
-//		if (rgba1 != 0) {
-//			drawRectangle((int) x, (int) y, (int) w, (int) h, rgba1);
-//		}
-	}
+    public static final int ICON_NONE = 0;
+    public static final int ICON_FOLDER_FILE_OPEN = 1;
+    public static final int ICON_FILE_SAVE_CLASSIC = 2;
+    public static final int ICON_FOLDER_OPEN = 3;
+    public static final int ICON_FOLDER_SAVE = 4;
+    public static final int ICON_FILE_OPEN = 5;
+    public static final int ICON_FILE_SAVE = 6;
+    public static final int ICON_FILE_EXPORT = 7;
+    public static final int ICON_FILE_ADD = 8;
+    public static final int ICON_FILE_DELETE = 9;
+    public static final int ICON_FILETYPE_TEXT = 10;
+    public static final int ICON_FILETYPE_AUDIO = 11;
+    public static final int ICON_FILETYPE_IMAGE = 12;
+    public static final int ICON_FILETYPE_PLAY = 13;
+    public static final int ICON_FILETYPE_VIDEO = 14;
+    public static final int ICON_FILETYPE_INFO = 15;
+    public static final int ICON_FILE_COPY = 16;
+    public static final int ICON_FILE_CUT = 17;
+    public static final int ICON_FILE_PASTE = 18;
+    public static final int ICON_CURSOR_HAND = 19;
+    public static final int ICON_CURSOR_POINTER = 20;
+    public static final int ICON_CURSOR_CLASSIC = 21;
+    public static final int ICON_PENCIL = 22;
+    public static final int ICON_PENCIL_BIG = 23;
+    public static final int ICON_BRUSH_CLASSIC = 24;
+    public static final int ICON_BRUSH_PAINTER = 25;
+    public static final int ICON_WATER_DROP = 26;
+    public static final int ICON_COLOR_PICKER = 27;
+    public static final int ICON_RUBBER = 28;
+    public static final int ICON_COLOR_BUCKET = 29;
+    public static final int ICON_TEXT_T = 30;
+    public static final int ICON_TEXT_A = 31;
+    public static final int ICON_SCALE = 32;
+    public static final int ICON_RESIZE = 33;
+    public static final int ICON_FILTER_POINT = 34;
+    public static final int ICON_FILTER_BILINEAR = 35;
+    public static final int ICON_CROP = 36;
+    public static final int ICON_CROP_ALPHA = 37;
+    public static final int ICON_SQUARE_TOGGLE = 38;
+    public static final int ICON_SYMMETRY = 39;
+    public static final int ICON_SYMMETRY_HORIZONTAL = 40;
+    public static final int ICON_SYMMETRY_VERTICAL = 41;
+    public static final int ICON_LENS = 42;
+    public static final int ICON_LENS_BIG = 43;
+    public static final int ICON_EYE_ON = 44;
+    public static final int ICON_EYE_OFF = 45;
+    public static final int ICON_FILTER_TOP = 46;
+    public static final int ICON_FILTER = 47;
+    public static final int ICON_TARGET_POINT = 48;
+    public static final int ICON_TARGET_SMALL = 49;
+    public static final int ICON_TARGET_BIG = 50;
+    public static final int ICON_TARGET_MOVE = 51;
+    public static final int ICON_CURSOR_MOVE = 52;
+    public static final int ICON_CURSOR_SCALE = 53;
+    public static final int ICON_CURSOR_SCALE_RIGHT = 54;
+    public static final int ICON_CURSOR_SCALE_LEFT = 55;
+    public static final int ICON_UNDO = 56;
+    public static final int ICON_REDO = 57;
+    public static final int ICON_REREDO = 58;
+    public static final int ICON_MUTATE = 59;
+    public static final int ICON_ROTATE = 60;
+    public static final int ICON_REPEAT = 61;
+    public static final int ICON_SHUFFLE = 62;
+    public static final int ICON_EMPTYBOX = 63;
+    public static final int ICON_TARGET = 64;
+    public static final int ICON_TARGET_SMALL_FILL = 65;
+    public static final int ICON_TARGET_BIG_FILL = 66;
+    public static final int ICON_TARGET_MOVE_FILL = 67;
+    public static final int ICON_CURSOR_MOVE_FILL = 68;
+    public static final int ICON_CURSOR_SCALE_FILL = 69;
+    public static final int ICON_CURSOR_SCALE_RIGHT_FILL = 70;
+    public static final int ICON_CURSOR_SCALE_LEFT_FILL = 71;
+    public static final int ICON_UNDO_FILL = 72;
+    public static final int ICON_REDO_FILL = 73;
+    public static final int ICON_REREDO_FILL = 74;
+    public static final int ICON_MUTATE_FILL = 75;
+    public static final int ICON_ROTATE_FILL = 76;
+    public static final int ICON_REPEAT_FILL = 77;
+    public static final int ICON_SHUFFLE_FILL = 78;
+    public static final int ICON_EMPTYBOX_SMALL = 79;
+    public static final int ICON_BOX = 80;
+    public static final int ICON_BOX_TOP = 81;
+    public static final int ICON_BOX_TOP_RIGHT = 82;
+    public static final int ICON_BOX_RIGHT = 83;
+    public static final int ICON_BOX_BOTTOM_RIGHT = 84;
+    public static final int ICON_BOX_BOTTOM = 85;
+    public static final int ICON_BOX_BOTTOM_LEFT = 86;
+    public static final int ICON_BOX_LEFT = 87;
+    public static final int ICON_BOX_TOP_LEFT = 88;
+    public static final int ICON_BOX_CENTER = 89;
+    public static final int ICON_BOX_CIRCLE_MASK = 90;
+    public static final int ICON_POT = 91;
+    public static final int ICON_ALPHA_MULTIPLY = 92;
+    public static final int ICON_ALPHA_CLEAR = 93;
+    public static final int ICON_DITHERING = 94;
+    public static final int ICON_MIPMAPS = 95;
+    public static final int ICON_BOX_GRID = 96;
+    public static final int ICON_GRID = 97;
+    public static final int ICON_BOX_CORNERS_SMALL = 98;
+    public static final int ICON_BOX_CORNERS_BIG = 99;
+    public static final int ICON_FOUR_BOXES = 100;
+    public static final int ICON_GRID_FILL = 101;
+    public static final int ICON_BOX_MULTISIZE = 102;
+    public static final int ICON_ZOOM_SMALL = 103;
+    public static final int ICON_ZOOM_MEDIUM = 104;
+    public static final int ICON_ZOOM_BIG = 105;
+    public static final int ICON_ZOOM_ALL = 106;
+    public static final int ICON_ZOOM_CENTER = 107;
+    public static final int ICON_BOX_DOTS_SMALL = 108;
+    public static final int ICON_BOX_DOTS_BIG = 109;
+    public static final int ICON_BOX_CONCENTRIC = 110;
+    public static final int ICON_BOX_GRID_BIG = 111;
+    public static final int ICON_OK_TICK = 112;
+    public static final int ICON_CROSS = 113;
+    public static final int ICON_ARROW_LEFT = 114;
+    public static final int ICON_ARROW_RIGHT = 115;
+    public static final int ICON_ARROW_DOWN = 116;
+    public static final int ICON_ARROW_UP = 117;
+    public static final int ICON_ARROW_LEFT_FILL = 118;
+    public static final int ICON_ARROW_RIGHT_FILL = 119;
+    public static final int ICON_ARROW_DOWN_FILL = 120;
+    public static final int ICON_ARROW_UP_FILL = 121;
+    public static final int ICON_AUDIO = 122;
+    public static final int ICON_FX = 123;
+    public static final int ICON_WAVE = 124;
+    public static final int ICON_WAVE_SINUS = 125;
+    public static final int ICON_WAVE_SQUARE = 126;
+    public static final int ICON_WAVE_TRIANGULAR = 127;
+    public static final int ICON_CROSS_SMALL = 128;
+    public static final int ICON_PLAYER_PREVIOUS = 129;
+    public static final int ICON_PLAYER_PLAY_BACK = 130;
+    public static final int ICON_PLAYER_PLAY = 131;
+    public static final int ICON_PLAYER_PAUSE = 132;
+    public static final int ICON_PLAYER_STOP = 133;
+    public static final int ICON_PLAYER_NEXT = 134;
+    public static final int ICON_PLAYER_RECORD = 135;
+    public static final int ICON_MAGNET = 136;
+    public static final int ICON_LOCK_CLOSE = 137;
+    public static final int ICON_LOCK_OPEN = 138;
+    public static final int ICON_CLOCK = 139;
+    public static final int ICON_TOOLS = 140;
+    public static final int ICON_GEAR = 141;
+    public static final int ICON_GEAR_BIG = 142;
+    public static final int ICON_BIN = 143;
+    public static final int ICON_HAND_POINTER = 144;
+    public static final int ICON_LASER = 145;
+    public static final int ICON_COIN = 146;
+    public static final int ICON_EXPLOSION = 147;
+    public static final int ICON_1UP = 148;
+    public static final int ICON_PLAYER = 149;
+    public static final int ICON_PLAYER_JUMP = 150;
+    public static final int ICON_KEY = 151;
+    public static final int ICON_DEMON = 152;
+    public static final int ICON_TEXT_POPUP = 153;
+    public static final int ICON_GEAR_EX = 154;
+    public static final int ICON_CRACK = 155;
+    public static final int ICON_CRACK_POINTS = 156;
+    public static final int ICON_STAR = 157;
+    public static final int ICON_DOOR = 158;
+    public static final int ICON_EXIT = 159;
+    public static final int ICON_MODE_2D = 160;
+    public static final int ICON_MODE_3D = 161;
+    public static final int ICON_CUBE = 162;
+    public static final int ICON_CUBE_FACE_TOP = 163;
+    public static final int ICON_CUBE_FACE_LEFT = 164;
+    public static final int ICON_CUBE_FACE_FRONT = 165;
+    public static final int ICON_CUBE_FACE_BOTTOM = 166;
+    public static final int ICON_CUBE_FACE_RIGHT = 167;
+    public static final int ICON_CUBE_FACE_BACK = 168;
+    public static final int ICON_CAMERA = 169;
+    public static final int ICON_SPECIAL = 170;
+    public static final int ICON_LINK_NET = 171;
+    public static final int ICON_LINK_BOXES = 172;
+    public static final int ICON_LINK_MULTI = 173;
+    public static final int ICON_LINK = 174;
+    public static final int ICON_LINK_BROKE = 175;
+    public static final int ICON_TEXT_NOTES = 176;
+    public static final int ICON_NOTEBOOK = 177;
+    public static final int ICON_SUITCASE = 178;
+    public static final int ICON_SUITCASE_ZIP = 179;
+    public static final int ICON_MAILBOX = 180;
+    public static final int ICON_MONITOR = 181;
+    public static final int ICON_PRINTER = 182;
+    public static final int ICON_PHOTO_CAMERA = 183;
+    public static final int ICON_PHOTO_CAMERA_FLASH = 184;
+    public static final int ICON_HOUSE = 185;
+    public static final int ICON_HEART = 186;
+    public static final int ICON_CORNER = 187;
+    public static final int ICON_VERTICAL_BARS = 188;
+    public static final int ICON_VERTICAL_BARS_FILL = 189;
+    public static final int ICON_LIFE_BARS = 190;
+    public static final int ICON_INFO = 191;
+    public static final int ICON_CROSSLINE = 192;
+    public static final int ICON_HELP = 193;
+    public static final int ICON_FILETYPE_ALPHA = 194;
+    public static final int ICON_FILETYPE_HOME = 195;
+    public static final int ICON_LAYERS_VISIBLE = 196;
+    public static final int ICON_LAYERS = 197;
+    public static final int ICON_WINDOW = 198;
+    public static final int ICON_HIDPI = 199;
+    public static final int ICON_FILETYPE_BINARY = 200;
+    public static final int ICON_HEX = 201;
+    public static final int ICON_SHIELD = 202;
+    public static final int ICON_FILE_NEW = 203;
+    public static final int ICON_FOLDER_ADD = 204;
+    public static final int ICON_ALARM = 205;
+    public static final int ICON_CPU = 206;
+    public static final int ICON_ROM = 207;
+    public static final int ICON_STEP_OVER = 208;
+    public static final int ICON_STEP_INTO = 209;
+    public static final int ICON_STEP_OUT = 210;
+    public static final int ICON_RESTART = 211;
+    public static final int ICON_BREAKPOINT_ON = 212;
+    public static final int ICON_BREAKPOINT_OFF = 213;
+    public static final int ICON_BURGER_MENU = 214;
+    public static final int ICON_CASE_SENSITIVE = 215;
+    public static final int ICON_REG_EXP = 216;
+    public static final int ICON_217 = 217;
+    public static final int ICON_218 = 218;
+    public static final int ICON_219 = 219;
+    public static final int ICON_220 = 220;
+    public static final int ICON_221 = 221;
+    public static final int ICON_222 = 222;
+    public static final int ICON_223 = 223;
+    public static final int ICON_224 = 224;
+    public static final int ICON_225 = 225;
+    public static final int ICON_226 = 226;
+    public static final int ICON_227 = 227;
+    public static final int ICON_228 = 228;
+    public static final int ICON_229 = 229;
+    public static final int ICON_230 = 230;
+    public static final int ICON_231 = 231;
+    public static final int ICON_232 = 232;
+    public static final int ICON_233 = 233;
+    public static final int ICON_234 = 234;
+    public static final int ICON_235 = 235;
+    public static final int ICON_236 = 236;
+    public static final int ICON_237 = 237;
+    public static final int ICON_238 = 238;
+    public static final int ICON_239 = 239;
+    public static final int ICON_240 = 240;
+    public static final int ICON_241 = 241;
+    public static final int ICON_242 = 242;
+    public static final int ICON_243 = 243;
+    public static final int ICON_244 = 244;
+    public static final int ICON_245 = 245;
+    public static final int ICON_246 = 246;
+    public static final int ICON_247 = 247;
+    public static final int ICON_248 = 248;
+    public static final int ICON_249 = 249;
+    public static final int ICON_250 = 250;
+    public static final int ICON_251 = 251;
+    public static final int ICON_252 = 252;
+    public static final int ICON_253 = 253;
+    public static final int ICON_254 = 254;
+    public static final int ICON_255 = 255;
 
-	@Override
-	public void DrawTextCodepoint(long _I0_font, int codepoint, long positionAddr, float fontSize, long tint) {
-		//super.DrawTextCodepoint(_I0_font, codepoint, positionAddr, f0_fontSize, _I0_tint);
-		float x = mir_read_float(positionAddr);
-		float y = mir_read_float(positionAddr + 4);
-		//FontMetrics fontMetrics = graphics.getFontMetrics(defaultFont);
-		//int fontHeight = fontMetrics.getHeight();
-		
-		// Respect the size requested by raygui
-		//System.out.println("DrawTextCodepoint(): codepoint=" + codepoint + " ('" + new String(Character.toChars(codepoint)) + "') x=" + x + " y=" + y + " fontSize=" + fontSize);
-	    Font font = defaultBaseFont.deriveFont(fontSize);
-	    graphics.setFont(font);
-	    
-	    if (fontSize <= 0) fontSize = 10; // secours
-	    if (fontSize != lastFontSize) {
-	        sizedFont = defaultBaseFont.deriveFont(fontSize);
-	        lastFontSize = fontSize;
-	    }
-	    graphics.setFont(sizedFont);
-	    
-	    FontMetrics fontMetrics = graphics.getFontMetrics(sizedFont);
-	    
-	    int rgba = ColorToInt(tint);
-	    int argb = convertRGBAToARGB(rgba);            
-	    graphics.setColor(new java.awt.Color(argb, true)); // Respect alpha
-	    
-	    int bx = (int) x;
-	    //int nudge = Math.round(fontMetrics.getHeight() * 0.25f);
-	    int nudge = Math.round((fontMetrics.getDescent() + fontMetrics.getLeading()) * 0.5f);
-	    int by = (int) (y + fontMetrics.getAscent() - nudge);
-		
-		//System.out.println("f0_fontSize=" + f0_fontSize + " fontHeight=" + fontHeight);
-		
-	    // Support codepoints > BMP
-	    char[] chars = Character.toChars(codepoint);
-	    graphics.drawChars(chars, 0, chars.length, bx, by);
-	    //graphics.drawString(String.valueOf((char) codepoint), bx, by);
-		
-		
-		
-	}
+    // Key state
+    private static final int KEY_CAP = 512; // give us some headroom
+    // Edge accumulators between frames (protected by a lock)
+    private final Object keyLock = new Object();
+    private final int[] keyPressAcc = new int[KEY_CAP];
+    private final int[] keyReleaseAcc = new int[KEY_CAP];
+    private final boolean[] keyDownState = new boolean[KEY_CAP]; // current state (EDT)
+    private final boolean[] keyDownFrame = new boolean[KEY_CAP]; // snapshot for the frame
+    private final boolean[] keyPressEdgeFrame = new boolean[KEY_CAP]; // visible 1 frame
+    private final boolean[] keyReleaseEdgeFrame = new boolean[KEY_CAP]; // visible 1 frame
 
-	@Override
-	public void BeginDrawing() {
-	    // Snapshot of edges + down state for the frame
-	    synchronized (keyLock) {
-	        for (int k = 0; k < KEY_CAP; k++) {
-	            keyDownFrame[k]        = keyDownState[k];
-	            keyPressEdgeFrame[k]   = (keyPressAcc[k]   > 0);
-	            keyReleaseEdgeFrame[k] = (keyReleaseAcc[k] > 0);
-	            keyPressAcc[k]   = 0;
-	            keyReleaseAcc[k] = 0;
-	        }
-	    }
-	    synchronized (mouseLock) {
-	        for (int b = 0; b < MOUSE_BUTTONS; b++) {
-	            mouseDownFrame[b]        = mouseDownState[b];
-	            mousePressEdgeFrame[b]   = (mousePressAcc[b]   > 0);
-	            mouseReleaseEdgeFrame[b] = (mouseReleaseAcc[b] > 0);
-	            mousePressAcc[b]   = 0;
-	            mouseReleaseAcc[b] = 0;
-	        }
-	    }
-	    try {
-	        SwingUtilities.invokeAndWait(() -> { /* flush EDT */ });
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	    }
-	}
+    // Mouse state (raylib indices: 0=LEFT,1=RIGHT,2=MIDDLE,3=SIDE,4=EXTRA)
+    private static final int MOUSE_BUTTONS = 8;
+    // Edge accumulators between frames (protected by a lock)
+    private final Object mouseLock = new Object();
+    private final int[] mousePressAcc = new int[MOUSE_BUTTONS];
+    private final int[] mouseReleaseAcc = new int[MOUSE_BUTTONS];
+    // Current state (EDT side) and snapshot readable by the frame
+    private final boolean[] mouseDownState = new boolean[MOUSE_BUTTONS];
+    private final boolean[] mouseDownFrame = new boolean[MOUSE_BUTTONS]; // snapshot for the frame
+    // Edges visible ONLY during the current frame
+    private static final int EDGE_NONE = -1;
+    private final boolean[] mousePressEdgeFrame = new boolean[MOUSE_BUTTONS];
+    private final boolean[] mouseReleaseEdgeFrame = new boolean[MOUSE_BUTTONS];
 
-	@Override
-	public void EndDrawing() {
-		//super.EndDrawing();
-		try {
-			SwingUtilities.invokeAndWait(new Runnable() {
-				@Override
-				public void run() {
-					//panel.repaint();
-					panel.paintImmediately(new Rectangle(offscreenSurface.getWidth(), offscreenSurface.getHeight()));
-				}
-			});
-		} catch (Exception e) {
-			e.printStackTrace();
-		} 
-	}
+    private volatile int mouseX, mouseY;
+    private final Vector<Character> charQueue = new Vector<>();
 
-	@Override
-	public int IsKeyDown(int key) {
-	    return (key >= 0 && key < KEY_CAP && keyDownFrame[key]) ? 1 : 0;
-	}
+    private Backend backend;
 
-	@Override
-	public int IsKeyPressed(int key) {
-	    if (key < 0 || key >= KEY_CAP) return 0;
-	    return keyPressEdgeFrame[key] ? 1 : 0;    // visible 1 frame
-	}
+    @Override
+    public void InitWindow(int screenWidth, int screenHeight, long screenNameAddr) {
+        initEdges();
+        String screenName = getStringFromMemory(screenNameAddr);
+        InitWindow(screenWidth, screenHeight, screenName);
+    }
 
-	@Override
-	public int IsMouseButtonDown(int b) {
-	    return (b >= 0 && b < MOUSE_BUTTONS && mouseDownFrame[b]) ? 1 : 0;
-	}
+    public void InitWindow(int screenWidth, int screenHeight, String screenName) {
+        backend = new SwingBackend();
+        backend.initWindow(screenWidth, screenHeight, screenName, this);
+    }
 
-	@Override
-	public int IsMouseButtonPressed(int b) {
-	    if (b < 0 || b >= MOUSE_BUTTONS) return 0;
-	    return mousePressEdgeFrame[b] ? 1 : 0;   // visible une seule frame
-	}
+    private void initEdges() {
+        Arrays.fill(keyPressAcc, EDGE_NONE);
+        Arrays.fill(keyReleaseAcc, EDGE_NONE);
+        Arrays.fill(keyDownState, false);
+        Arrays.fill(mousePressAcc, EDGE_NONE);
+        Arrays.fill(mouseReleaseAcc, EDGE_NONE);
+        Arrays.fill(mouseDownState, false);
+    }
 
-	@Override
-	public int IsMouseButtonReleased(int b) {
-	    if (b < 0 || b >= MOUSE_BUTTONS) return 0;
-	    return mouseReleaseEdgeFrame[b] ? 1 : 0; // visible une seule frame
-	}
+    @Override
+    public int GetScreenWidth() {
+        return backend.getScreenWidth();
+    }
 
-	@Override
-	public int GetCharPressed() {
-	    synchronized (charQueue) {
-	        if (charQueue.isEmpty()) return 0;
-	        return charQueue.remove(0);
-	    }
-	}
+    @Override
+    public int GetScreenHeight() {
+        return backend.getScreenHeight();
+    }
 
-	@Override
-	public void GetMousePosition(long addr) {
-	    mir_write_float(addr, mouseX);
-	    mir_write_float(addr + 4, mouseY);
-	}
-	
-    public float GetMouseWheelMove() {
-        // TODO
-        return 0.0f;
-    }	
-    
-    public int getMaxCharWidth () {
-        return 10;
-      } // End of function getMaxCharWidth
+    @Override
+    public void ClearBackground(long colorAddr) {
+        backend.clearBackground(ColorToInt(colorAddr));
+    }
 
-      public int getMaxCharHeight () {
-        return 20;
-      } // End of function getMaxCharHeight
+    @Override
+    public void DrawRectangle(int x, int y, int w, int h, long colorAddr) {
+        backend.drawRectangle(x, y, w, h, ColorToInt(colorAddr));
+    }
 
-	private JPanel createPanel(AWTEventConverter converter) {
+    @Override
+    public void DrawRectangleGradientEx(long rectAddr, long c1Addr, long c2Addr, long c3Addr, long c4Addr) {
+        int x = (int) mir_read_float(rectAddr);
+        int y = (int) mir_read_float(rectAddr + 4);
+        int w = (int) mir_read_float(rectAddr + 8);
+        int h = (int) mir_read_float(rectAddr + 12);
 
-		final Dimension dimension = new Dimension(offscreenSurface.getWidth(), offscreenSurface.getHeight());
-		JPanel panel = new JPanel() {
+        // RayguiBase provides : c1=TL, c2=BL, c3=BR, c4=TR
+        // Backend: TL, TR, BL, BR
+        backend.drawRectangleGradientEx(x, y, w, h, ColorToInt(c1Addr), // TL
+                ColorToInt(c4Addr), // TR
+                ColorToInt(c2Addr), // BL
+                ColorToInt(c3Addr) // BR
+        );
+    }
 
-			public Dimension getMinimumSize() {
-				return dimension;
-			}
+    @Override
+    public void DrawTextCodepoint(long _I0_font, int codepoint, long posAddr, float fontSize, long tintAddr) {
+        float x = mir_read_float(posAddr);
+        float y = mir_read_float(posAddr + 4);
+        backend.drawTextCodepoint(x, y, codepoint, fontSize, ColorToInt(tintAddr), _I0_font);
+    }
 
-			public Dimension getPreferredSize() {
-				return dimension;
-			}
+    @Override
+    public void BeginDrawing() {
+        // Snapshot edges for keyboard
+        synchronized (keyLock) {
+            for (int k = 0; k < KEY_CAP; k++) {
+                keyDownFrame[k] = keyDownState[k];
+                keyPressEdgeFrame[k] = (keyPressAcc[k] > 0);
+                keyReleaseEdgeFrame[k] = (keyReleaseAcc[k] > 0);
+                keyPressAcc[k] = 0;
+                keyReleaseAcc[k] = 0;
+            }
+        }
+        // Snapshot edges for mouse
+        synchronized (mouseLock) {
+            for (int b = 0; b < MOUSE_BUTTONS; b++) {
+                mouseDownFrame[b] = mouseDownState[b];
+                mousePressEdgeFrame[b] = (mousePressAcc[b] > 0);
+                mouseReleaseEdgeFrame[b] = (mouseReleaseAcc[b] > 0);
+                mousePressAcc[b] = 0;
+                mouseReleaseAcc[b] = 0;
+            }
+        }
+        backend.beginFrame();
+    }
 
-			public void paintComponent(Graphics g) {
-				if (offscreenSurface != null) {
-					g.drawImage(offscreenSurface, 0, 0, null);
-				}
-			}
-		};
-		panel.addKeyListener(converter);
-		panel.addMouseListener(converter);
-		panel.addMouseMotionListener(converter);
-		// Disable focus traversal keys to handle tab events
-		panel.setFocusTraversalKeysEnabled(false);
-		panel.setFocusable(true);
+    @Override
+    public void EndDrawing() {
+        backend.endFrame();
+    }
 
-		return panel;
-	}
+    @Override
+    public int IsKeyDown(int key) {
+        return (key >= 0 && key < KEY_CAP && keyDownFrame[key]) ? 1 : 0;
+    }
 
-	private void fireKeyPressed(int key) {
-	    if (key <= 0 || key >= KEY_CAP) return;
-	    synchronized (keyLock) {
-	        if (!keyDownState[key]) {        // edge up -> down
-	            keyDownState[key] = true;
-	            keyPressAcc[key]++;           // accumule le press
-	        }
-	    }
-	}
-
-	private void fireKeyReleased(int key) {
-	    if (key <= 0 || key >= KEY_CAP) return;
-	    synchronized (keyLock) {
-	        if (keyDownState[key]) {         // edge down -> up
-	            keyDownState[key] = false;
-	            keyReleaseAcc[key]++;        // accumule le release
-	        }
-	    }
-	}
-
-	private void fireMousePressed(int rb) {
-	    if (rb < 0 || rb >= MOUSE_BUTTONS) return;
-	    synchronized (mouseLock) {
-	        if (!mouseDownState[rb]) {          // edge up -> down
-	            mouseDownState[rb] = true;
-	            mousePressAcc[rb]++;            // on accumule le press
-	        }
-	    }
-	}
-
-	private void fireMouseReleased(int rb) {
-	    if (rb < 0 || rb >= MOUSE_BUTTONS) return;
-	    synchronized (mouseLock) {
-	        if (mouseDownState[rb]) {           // edge down -> up
-	            mouseDownState[rb] = false;
-	            mouseReleaseAcc[rb]++;          // on accumule le release
-	        }
-	    }
-	}
-
-	// Char queue stays the same but make it thread-safe
-	private void fireCharTyped(char c) {
-	    // Ignore most control chars; raygui reads BACKSPACE via KEY_BACKSPACE, not chars
-	    if (c < 0x20 && c != '\n' && c != '\t') return;
-	    synchronized (charQueue) { charQueue.add(c); }
-	}
-
-
-	private void setMousePosition(int x, int y) {
-	    mouseX = x;
-	    mouseY = y;
-	}
-
-    private static int mapAwtButtonToRaylibIndex(int awtButton) {
-        // raylib: 0=LEFT,1=RIGHT,2=MIDDLE,3/4=EXTRA
-        switch (awtButton) {
-        case MouseEvent.BUTTON1:
+    @Override
+    public int IsKeyPressed(int key) {
+        if (key < 0 || key >= KEY_CAP)
             return 0;
-        case MouseEvent.BUTTON3:
-            return 1;
-        case MouseEvent.BUTTON2:
-            return 2;
-        default:
-            return Math.min(awtButton, MOUSE_BUTTONS - 1);
+        return keyPressEdgeFrame[key] ? 1 : 0;
+    }
+
+    @Override
+    public int IsMouseButtonDown(int b) {
+        return (b >= 0 && b < MOUSE_BUTTONS && mouseDownFrame[b]) ? 1 : 0;
+    }
+
+    @Override
+    public int IsMouseButtonPressed(int b) {
+        if (b < 0 || b >= MOUSE_BUTTONS)
+            return 0;
+        return mousePressEdgeFrame[b] ? 1 : 0;
+    }
+
+    @Override
+    public int IsMouseButtonReleased(int b) {
+        if (b < 0 || b >= MOUSE_BUTTONS)
+            return 0;
+        return mouseReleaseEdgeFrame[b] ? 1 : 0;
+    }
+
+    @Override
+    public int GetCharPressed() {
+        synchronized (charQueue) {
+            if (charQueue.isEmpty())
+                return 0;
+            return charQueue.remove(0);
         }
     }
 
-	private class AWTEventConverter extends ComponentAdapter implements KeyListener, MouseListener, MouseMotionListener, WindowListener {
+    @Override
+    public void GetMousePosition(long addr) {
+        mir_write_float(addr, mouseX);
+        mir_write_float(addr + 4, mouseY);
+    }
 
-		public int convertAWTKeyCode(int keyCode) {
-			switch (keyCode) {
-			case KeyEvent.VK_ENTER:
-				return KEY_ENTER;
-			case KeyEvent.VK_BACK_SPACE:
-				return KEY_BACKSPACE;
-			case KeyEvent.VK_TAB:
-				return KEY_TAB;
-			case KeyEvent.VK_SHIFT:
-				return KEY_LEFT_SHIFT;
-			case KeyEvent.VK_CONTROL:
-				return KEY_LEFT_CONTROL;
-			case KeyEvent.VK_ALT:
-				return KEY_LEFT_ALT;
-			case KeyEvent.VK_PAUSE:
-				return KEY_PAUSE;
-			case KeyEvent.VK_CAPS_LOCK:
-				return KEY_CAPS_LOCK;
-			case KeyEvent.VK_ESCAPE:
-				return KEY_ESCAPE;
-			case KeyEvent.VK_SPACE:
-				return KEY_SPACE;
-			case KeyEvent.VK_PAGE_UP:
-				return KEY_PAGE_UP;
-			case KeyEvent.VK_PAGE_DOWN:
-				return KEY_PAGE_DOWN;
-			case KeyEvent.VK_END:
-				return KEY_END;
-			case KeyEvent.VK_HOME:
-				return KEY_HOME;
-			case KeyEvent.VK_LEFT:
-				return KEY_LEFT;
-			case KeyEvent.VK_UP:
-				return KEY_UP;
-			case KeyEvent.VK_RIGHT:
-				return KEY_RIGHT;
-			case KeyEvent.VK_DOWN:
-				return KEY_DOWN;
-			case KeyEvent.VK_COMMA:
-				return KEY_COMMA;
-			case KeyEvent.VK_MINUS:
-				return KEY_MINUS;
-			case KeyEvent.VK_PERIOD:
-				return KEY_PERIOD;
-			case KeyEvent.VK_SLASH:
-				return KEY_SLASH;
-			case KeyEvent.VK_SEMICOLON:
-				return KEY_SEMICOLON;
-			case KeyEvent.VK_EQUALS:
-				return KEY_EQUAL;
-			case KeyEvent.VK_0:
-			case KeyEvent.VK_1:
-			case KeyEvent.VK_2:
-			case KeyEvent.VK_3:
-			case KeyEvent.VK_4:
-			case KeyEvent.VK_5:
-			case KeyEvent.VK_6:
-			case KeyEvent.VK_7:
-			case KeyEvent.VK_8:
-			case KeyEvent.VK_9:
-			case KeyEvent.VK_A:
-			case KeyEvent.VK_B:
-			case KeyEvent.VK_C:
-			case KeyEvent.VK_D:
-			case KeyEvent.VK_E:
-			case KeyEvent.VK_F:
-			case KeyEvent.VK_G:
-			case KeyEvent.VK_H:
-			case KeyEvent.VK_I:
-			case KeyEvent.VK_J:
-			case KeyEvent.VK_K:
-			case KeyEvent.VK_L:
-			case KeyEvent.VK_M:
-			case KeyEvent.VK_N:
-			case KeyEvent.VK_O:
-			case KeyEvent.VK_P:
-			case KeyEvent.VK_Q:
-			case KeyEvent.VK_R:
-			case KeyEvent.VK_S:
-			case KeyEvent.VK_T:
-			case KeyEvent.VK_U:
-			case KeyEvent.VK_V:
-			case KeyEvent.VK_W:
-			case KeyEvent.VK_X:
-			case KeyEvent.VK_Y:
-			case KeyEvent.VK_Z:
-				return keyCode;
-			case KeyEvent.VK_OPEN_BRACKET:
-				return KEY_LEFT_BRACKET;
-			case KeyEvent.VK_BACK_SLASH:
-				return KEY_BACKSLASH;
-			case KeyEvent.VK_CLOSE_BRACKET:
-				return KEY_RIGHT_BRACKET;
-			case KeyEvent.VK_NUMPAD0:
-				return KEY_KP_0;
-			case KeyEvent.VK_NUMPAD1:
-				return KEY_KP_1;
-			case KeyEvent.VK_NUMPAD2:
-				return KEY_KP_2;
-			case KeyEvent.VK_NUMPAD3:
-				return KEY_KP_3;
-			case KeyEvent.VK_NUMPAD4:
-				return KEY_KP_4;
-			case KeyEvent.VK_NUMPAD5:
-				return KEY_KP_5;
-			case KeyEvent.VK_NUMPAD6:
-				return KEY_KP_6;
-			case KeyEvent.VK_NUMPAD7:
-				return KEY_KP_7;
-			case KeyEvent.VK_NUMPAD8:
-				return KEY_KP_8;
-			case KeyEvent.VK_NUMPAD9:
-				return KEY_KP_9;
-			case KeyEvent.VK_MULTIPLY:
-				return KEY_KP_MULTIPLY;
-			case KeyEvent.VK_ADD:
-				return KEY_KP_ADD;
-			//case KeyEvent.VK_SEPARATOR:
-			case KeyEvent.VK_SUBTRACT:
-				return KEY_KP_SUBTRACT;
-			//case KeyEvent.VK_DECIMAL:
-			case KeyEvent.VK_DIVIDE:
-				return KEY_KP_DIVIDE;
-			case KeyEvent.VK_DELETE:
-				return KEY_DELETE;
-			case KeyEvent.VK_NUM_LOCK:
-				return KEY_NUM_LOCK;
-			case KeyEvent.VK_SCROLL_LOCK:
-				return KEY_SCROLL_LOCK;
-			case KeyEvent.VK_F1:
-				return KEY_F1;
-			case KeyEvent.VK_F2:
-				return KEY_F2;
-			case KeyEvent.VK_F3:
-				return KEY_F3;
-			case KeyEvent.VK_F4:
-				return KEY_F4;
-			case KeyEvent.VK_F5:
-				return KEY_F5;
-			case KeyEvent.VK_F6:
-				return KEY_F6;
-			case KeyEvent.VK_F7:
-				return KEY_F7;
-			case KeyEvent.VK_F8:
-				return KEY_F8;
-			case KeyEvent.VK_F9:
-				return KEY_F9;
-			case KeyEvent.VK_F10:
-				return KEY_F10;
-			case KeyEvent.VK_F11:
-				return KEY_F11;
-			case KeyEvent.VK_F12:
-				return KEY_F12;
-			case KeyEvent.VK_PRINTSCREEN:
-				return KEY_PRINT_SCREEN;
-			case KeyEvent.VK_INSERT:
-				return KEY_INSERT;
-			case KeyEvent.VK_BACK_QUOTE:
-				return KEY_GRAVE;
-			case KeyEvent.VK_QUOTE:
-				return KEY_APOSTROPHE;
-			case KeyEvent.VK_KP_UP:
-				return KEY_UP;
-			case KeyEvent.VK_KP_DOWN:
-				return KEY_DOWN;
-			case KeyEvent.VK_KP_LEFT:
-				return KEY_LEFT;
-			case KeyEvent.VK_KP_RIGHT:
-				return KEY_RIGHT;
-			//case KeyEvent.VK_AMPERSAND:
-			case KeyEvent.VK_ASTERISK:
-				return KEY_KP_MULTIPLY;
-			//case KeyEvent.VK_QUOTEDBL:
-			case KeyEvent.VK_LESS:
-				return KEY_MINUS;
-			//case KeyEvent.VK_GREATER:
-			//case KeyEvent.VK_BRACELEFT:
-			//case KeyEvent.VK_BRACERIGHT:
-			//case KeyEvent.VK_AT:
-			//case KeyEvent.VK_COLON:
-			//case KeyEvent.VK_CIRCUMFLEX:
-			//case KeyEvent.VK_DOLLAR:
-			//case KeyEvent.VK_EURO_SIGN:
-			//case KeyEvent.VK_EXCLAMATION_MARK:
-			//case KeyEvent.VK_INVERTED_EXCLAMATION_MARK:
-			//case KeyEvent.VK_LEFT_PARENTHESIS:
-			//case KeyEvent.VK_NUMBER_SIGN:
-			case KeyEvent.VK_PLUS:
-				return KEY_KP_ADD;
-			//case KeyEvent.VK_RIGHT_PARENTHESIS:
-			//case KeyEvent.VK_UNDERSCORE:
-			default:
-				return KEY_NULL;
-			}
-		}
+    @Override
+    public float GetMouseWheelMove() {
+        return 0.0f;
+    }
 
-		@Override
-	    public void keyPressed(KeyEvent e) {
-	        int ray = convertAWTKeyCode(e.getKeyCode());
-	        fireKeyPressed(ray);
-	    }
+    @Override
+    public void UnloadTexture(long textureAddr) {
+        // Do nothing
+    }
 
-	    @Override
-	    public void keyReleased(KeyEvent e) {
-	        int ray = convertAWTKeyCode(e.getKeyCode());
-	        fireKeyReleased(ray);
-	    }
+    @Override
+    public void SetShapesTexture(long textureAddr, long rectAddr) {
+        // Do nothing
+    }
 
-	    @Override
-	    public void keyTyped(KeyEvent e) {
-	        char c = e.getKeyChar();
-	        // Synthesize press edges for keys that often arrive as typed chars
-	        if (c == '\b') { // BACKSPACE auto-repeat arrives here on many systems
-	            fireKeyPressed(KEY_BACKSPACE);
-	            return;
-	        }
-	        if (c == '\n') { // Enter in text fields can be typed
-	            fireKeyPressed(KEY_ENTER);
-	            return;
-	        }
-	        // Keep printable chars for GetCharPressed()
-	        if (c >= 0x20 || c == '\t' || c == '\n') {
-	            fireCharTyped(c);
-	        }
-	    }
+    @Override
+    public int GetMaxCharWidth() {
+        return backend.getMaxCharWidth();
+    }
 
-	    @Override
-	    public void mousePressed(MouseEvent e) {
-	        if (!panel.isFocusOwner()) 
-	            panel.requestFocusInWindow();        // keep keyboard focus after click
-	        setMousePosition(e.getX(), e.getY());
-	        fireMousePressed(mapAwtButtonToRaylibIndex(e.getButton()));
-	    }
+    @Override
+    public int GetMaxCharHeight() {
+        return backend.getMaxCharHeight();
+    }
 
-	    @Override
-	    public void mouseReleased(MouseEvent e) {
-	        setMousePosition(e.getX(), e.getY());
-	        fireMouseReleased(mapAwtButtonToRaylibIndex(e.getButton()));
-	    }
+    // ====== Backend.InputSink : backend callbacks (Swing, etc.) ======
 
-	    @Override
-	    public void mouseDragged(MouseEvent e) {
-	        setMousePosition(e.getX(), e.getY());
-	    }
+    @Override
+    public void onKeyDown(int key) {
+        if (key <= 0 || key >= KEY_CAP)
+            return;
+        synchronized (keyLock) {
+            if (!keyDownState[key]) {
+                keyDownState[key] = true;
+                keyPressAcc[key]++;
+            }
+        }
+    }
 
-	    @Override
-	    public void mouseMoved(MouseEvent e) {
-	        setMousePosition(e.getX(), e.getY());
-	    }
+    @Override
+    public void onKeyUp(int key) {
+        if (key <= 0 || key >= KEY_CAP)
+            return;
+        synchronized (keyLock) {
+            if (keyDownState[key]) {
+                keyDownState[key] = false;
+                keyReleaseAcc[key]++;
+            }
+        }
+    }
 
-		public void windowClosing(WindowEvent e) {
-			//addEvent(EVENT_TYPE_WINDOW_CLOSING, 0, 0);
-		}
+    @Override
+    public void onCharTyped(char c) {
+        if (c < 0x20 && c != '\n' && c != '\t')
+            return;
+        synchronized (charQueue) {
+            charQueue.add(c);
+        }
+    }
 
-		public void windowClosed(WindowEvent e) {
-		}
+    @Override
+    public void onMouseDown(int btn, int x, int y) {
+        if (btn < 0 || btn >= MOUSE_BUTTONS)
+            return;
+        synchronized (mouseLock) {
+            if (!mouseDownState[btn]) {
+                mouseDownState[btn] = true;
+                mousePressAcc[btn]++;
+            }
+        }
+        mouseX = x;
+        mouseY = y;
+    }
 
-		public void windowActivated(WindowEvent arg0) {
-		}
+    @Override
+    public void onMouseUp(int btn, int x, int y) {
+        if (btn < 0 || btn >= MOUSE_BUTTONS)
+            return;
+        synchronized (mouseLock) {
+            if (mouseDownState[btn]) {
+                mouseDownState[btn] = false;
+                mouseReleaseAcc[btn]++;
+            }
+        }
+        mouseX = x;
+        mouseY = y;
+    }
 
-		public void windowDeactivated(WindowEvent arg0) {
-		}
+    @Override
+    public void onMouseMove(int x, int y) {
+        mouseX = x;
+        mouseY = y;
+    }
 
-		public void windowDeiconified(WindowEvent arg0) {
-		}
+    @Override
+    public void onResize(int w, int h) {
+        // nothing special logic-wise here; the surface is recreated in the backend
+    }
 
-		public void windowIconified(WindowEvent arg0) {
-		}
+    /*
+     * =========================================== Java-friendly wrappers of the Raygui API ===========================================
+     */
 
-		public void windowOpened(WindowEvent arg0) {
-		}
+    public static final class Rect {
+        public float x, y, w, h;
 
-		@Override
-		public void mouseClicked(MouseEvent e) {
-		  
-		}
+        public Rect(float x, float y, float w, float h) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+        }
+    }
 
+    public static final class Vec2 {
+        public float x, y;
 
-        @Override
-        public void mouseEntered(MouseEvent e) {
-            // TODO Auto-generated method stub
-            
+        public Vec2() {
+        }
+
+        public Vec2(float x, float y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    public static final class RefInt {
+        public int v;
+
+        public RefInt(int v) {
+            this.v = v;
+        }
+    }
+
+    public static final class RefBool {
+        public boolean v;
+
+        public RefBool(boolean v) {
+            this.v = v;
+        }
+    }
+
+    public static final class RefString {
+        /** Null-terminated UTF-16 (Java) buffer: always guarantees a terminating '\0'. */
+        public final char[] buf;
+
+        public RefString(int capacity) {
+            this.buf = new char[Math.max(2, capacity)];
+            this.buf[0] = '\0';
+        }
+
+        public RefString(String init, int capacity) {
+            this(Math.max(capacity, 2));
+            set(init);
+        }
+
+        public RefString(String init) {
+            int cap = (init != null ? init.length() : 0);
+            cap = Math.max(64, cap + 64);
+            this.buf = new char[cap];
+            set(init);
+        }
+
+        public int length() {
+            for (int i = 0; i < buf.length; i++) {
+                if (buf[i] == '\0')
+                    return i;
+            }
+            buf[buf.length - 1] = '\0';
+            return buf.length - 1;
+        }
+
+        /** Total capacity (excluding implicit null-terminator). */
+        public int capacity() {
+            return buf.length;
+        }
+
+        /** Returns the Java string (without the '\0' and the unused part). */
+        public String get() {
+            return new String(buf, 0, length());
         }
 
         @Override
-        public void mouseExited(MouseEvent e) {
-            // TODO Auto-generated method stub
-            
-        }
-        
-        @Override
-		public void componentResized(ComponentEvent e) {
-			int w = e.getComponent().getWidth();
-			int h = e.getComponent().getHeight();
-			offscreenSurface = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-			graphics = offscreenSurface.createGraphics();
+        public String toString() {
+            return get();
         }
 
-	}
+        /** Replaces the contents with s (truncated if necessary) and adds a '\0' after it. */
+        public void set(String s) {
+            if (s == null) {
+                buf[0] = '\0';
+                return;
+            }
+            int n = Math.min(s.length(), buf.length - 1);
+            s.getChars(0, n, buf, 0);
+            buf[n] = '\0';
+            // Clean up the rest ?
+            // java.util.Arrays.fill(buf, n + 1, buf.length, '\0');
+        }
 
-	class Color {
+        /** Clears logical content. */
+        public void clear() {
+            buf[0] = '\0';
+        }
 
-		final float INT_TO_FLOAT_CONST = 1f / 255f;
-		float alpha;
-		float red;
-		float green;
-		float blue;
+        /** Append (truncated if capacity is reached). Returns the number of tanks added. */
+        public int append(String s) {
+            if (s == null || s.isEmpty())
+                return 0;
+            int start = length();
+            if (start >= buf.length - 1)
+                return 0;
+            int can = Math.min(s.length(), (buf.length - 1) - start);
+            s.getChars(0, can, buf, start);
+            buf[start + can] = '\0';
+            return can;
+        }
 
-		public Color() {
-		}
+        /** Direct access if you need to edit character by character. */
+        public char charAt(int i) {
+            if (i < 0 || i >= length())
+                throw new IndexOutOfBoundsException();
+            return buf[i];
+        }
 
-		public Color(int rgba) {
-			setRGBA(rgba);
-		}
+        public void setCharAt(int i, char c) {
+            if (i < 0 || i >= buf.length - 1)
+                throw new IndexOutOfBoundsException();
+            buf[i] = c;
+            if (c == '\0') {
+            } else if (i == length()) {
+                int next = i + 1;
+                if (next < buf.length)
+                    buf[next] = '\0';
+            }
+        }
+    }
 
-		void setRGBA(int rgba) {
-			int r = (rgba >> 24) & 0xFF;
-			int g = (rgba >> 16) & 0xFF;
-			int b = (rgba >> 8) & 0xFF;
-			int a = rgba & 0xFF;
-			setInt(r, g, b, a);
-		}
+    // ==== Color utils ====
+    public static int RGBA(int r, int g, int b, int a) {
+        return ((r & 0xFF) << 24) | ((g & 0xFF) << 16) | ((b & 0xFF) << 8) | (a & 0xFF);
+    }
 
-		void setInt(int red, int green, int blue, int alpha) {
-			this.red = red * INT_TO_FLOAT_CONST;
-			this.green = green * INT_TO_FLOAT_CONST;
-			this.blue = blue * INT_TO_FLOAT_CONST;
-			this.alpha = alpha * INT_TO_FLOAT_CONST;
-		}
+    public static int fade(int rgba, float alpha) {
+        int a = Math.max(0, Math.min(255, Math.round((rgba & 0xFF) * alpha)));
+        return (rgba & 0xFFFFFF00) | a;
+    }
 
-		void setFloat(float red, float green, float blue, float alpha) {
-			this.alpha = alpha;
-			this.red = red;
-			this.green = green;
-			this.blue = blue;
-		}
+    // ==== Stack : save, restore ====
+    private int spSave() {
+        return mir_get_stack_position();
+    }
 
-		@Override
-		public String toString() {
-			return "Color [alpha=" + alpha + ", red=" + red + ", green=" + green + ", blue=" + blue + "]";
-		}
-	}
+    private void spRestore(int sp) {
+        mir_set_stack_position(sp);
+    }
 
-	/*
-	 * See
-	 * https://harmoniccode.blogspot.com/2011/04/bilinear-color-interpolation.
-	 * html
-	 */
-	private void interpolateColor(Color outputColor, final Color color1, final Color color2, float fraction) {
-		fraction = Math.min(fraction, 1f);
-		fraction = Math.max(fraction, 0f);
+    // ==== Helpers to read / write in memory ====
+    private long stackRect(Rect r) {
+        long p = mir_allocate(16);
+        mir_write_float(p, r.x);
+        mir_write_float(p + 4, r.y);
+        mir_write_float(p + 8, r.w);
+        mir_write_float(p + 12, r.h);
+        return p;
+    }
 
-		final float RED1 = color1.red;
-		final float GREEN1 = color1.green;
-		final float BLUE1 = color1.blue;
-		final float ALPHA1 = color1.alpha;
+    private long stackColor(int rgba) {
+        long p = mir_allocate(4);
+        int r = (rgba >>> 24) & 0xFF, g = (rgba >>> 16) & 0xFF, b = (rgba >>> 8) & 0xFF, a = rgba & 0xFF;
+        mir_write_ubyte(p, r);
+        mir_write_ubyte(p + 1, g);
+        mir_write_ubyte(p + 2, b);
+        mir_write_ubyte(p + 3, a);
+        return p;
+    }
 
-		final float RED2 = color2.red;
-		final float GREEN2 = color2.green;
-		final float BLUE2 = color2.blue;
-		final float ALPHA2 = color2.alpha;
+    private long stackInt(int v) {
+        long p = mir_allocate(4);
+        mir_write_int(p, v);
+        return p;
+    }
 
-		final float DELTA_RED = RED2 - RED1;
-		final float DELTA_GREEN = GREEN2 - GREEN1;
-		final float DELTA_BLUE = BLUE2 - BLUE1;
-		final float DELTA_ALPHA = ALPHA2 - ALPHA1;
+    private long stackVec2(Vec2 v) {
+        long p = mir_allocate(8);
+        mir_write_float(p, v.x);
+        mir_write_float(p + 4, v.y);
+        return p;
+    }
 
-		float red = RED1 + (DELTA_RED * fraction);
-		float green = GREEN1 + (DELTA_GREEN * fraction);
-		float blue = BLUE1 + (DELTA_BLUE * fraction);
-		float alpha = ALPHA1 + (DELTA_ALPHA * fraction);
+    private long stackCharBuffer(RefString rs, int maxLen) {
+        long p = mir_allocate(maxLen + 1);
+        int n = Math.min(rs.buf.length, maxLen);
+        for (int i = 0; i < n; i++)
+            mir_write_ubyte(p + i, (byte) rs.buf[i]);
+        mir_write_ubyte(p + n, 0);
+        return p;
+    }
 
-		red = Math.min(red, 1f);
-		red = Math.max(red, 0f);
-		green = Math.min(green, 1f);
-		green = Math.max(green, 0f);
-		blue = Math.min(blue, 1f);
-		blue = Math.max(blue, 0f);
-		alpha = Math.min(alpha, 1f);
-		alpha = Math.max(alpha, 0f);
-		outputColor.setFloat(red, green, blue, alpha);
-	}
+    private void readBackCharBuffer(long addr, RefString out, int maxLen) {
+        int n = Math.min(out.buf.length, maxLen);
+        for (int i = 0; i < n; i++) {
+            int b = mir_read_ubyte(addr + i);
+            if (b == 0) {
+                for (int k = i; k < n; k++)
+                    out.buf[k] = '\0';
+                break;
+            }
+            out.buf[i] = (char) (b & 0xFF);
+        }
+    }
 
-	Color COLOR_X1 = new Color();
-	Color COLOR_X2 = new Color();
+    private long cStringConst(String s) {
+        // Reusable “const” strings (Runtime internal map)
+        return mir_get_string_ptr(s != null ? s : "");
+    }
 
-	private void bilinearInterpolateColor(Color outputColor, final Color color00, Color color10, final Color color01, final Color color11, final float fractionX, final float fractionY) {
-		interpolateColor(COLOR_X1, color00, color10, fractionX);
-		interpolateColor(COLOR_X2, color01, color11, fractionX);
-		interpolateColor(outputColor, COLOR_X1, COLOR_X2, fractionY);
-	}
+    private long cStringTemp(String s) {
+        // Temporary strings (on the stack)
+        if (s == null)
+            s = "";
+        byte[] bytes = s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        long p = mir_allocate(bytes.length + 1);
+        writeCStringInMemoryFromJavaString(p, bytes);
+        return p;
+    }
 
-	/**
-	 * @author Gerrit Grunwald <han.solo at muenster.de>
-	 */
-	public final class BiLinearGradientPaint implements java.awt.Paint {
-		private static final float INT_TO_FLOAT_CONST = 1f / 255f;
-		private final java.awt.Rectangle BOUNDS;
-		private final java.awt.Color COLOR_00;
-		private final java.awt.Color COLOR_10;
-		private final java.awt.Color COLOR_01;
-		private final java.awt.Color COLOR_11;
-		private final float FRACTION_X_STEPSIZE;
-		private final float FRACTION_Y_STEPSIZE;
-		private int titleBarHeight;
+    // ==== Wrappers for windows and drawing ====
+    public void initWindow(int w, int h, String title) {
+        int sp = spSave();
+        try {
+            InitWindow(w, h, cStringConst(title));
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-		/**
-		 * Enhanced constructor which takes bounds of the objects SHAPE to fill and the four
-		 * colors we need to create the bilinear interpolated gradient
-		 * @param SHAPE      
-		 * @param COLOR_00      
-		 * @param COLOR_10 
-		 * @param COLOR_01 
-		 * @param COLOR_11 
-		 * @throws IllegalArgumentException
-		 */
-		public BiLinearGradientPaint(final java.awt.Shape SHAPE, final java.awt.Color COLOR_00, final java.awt.Color COLOR_10, final java.awt.Color COLOR_01, final java.awt.Color COLOR_11)
-				throws IllegalArgumentException {
-			// Set the values
-			this.BOUNDS = SHAPE.getBounds();
-			this.COLOR_00 = COLOR_00;
-			this.COLOR_10 = COLOR_10;
-			this.COLOR_01 = COLOR_01;
-			this.COLOR_11 = COLOR_11;
-			this.FRACTION_X_STEPSIZE = 1.0f / (BOUNDS.getBounds().width);
-			this.FRACTION_Y_STEPSIZE = 1.0f / (BOUNDS.getBounds().height);
-			this.titleBarHeight = -1;
-		}
+    public void beginDrawing() {
+        BeginDrawing();
+    }
 
-		@Override
-		public java.awt.PaintContext createContext(final java.awt.image.ColorModel COLOR_MODEL, final java.awt.Rectangle DEVICE_BOUNDS, final java.awt.geom.Rectangle2D USER_BOUNDS,
-				final java.awt.geom.AffineTransform TRANSFORM, final java.awt.RenderingHints HINTS) {
-			return new BiLinearGradientPaintContext();
-		}
+    public void endDrawing() {
+        EndDrawing();
+    }
 
-		@Override
-		public int getTransparency() {
-			return java.awt.Transparency.TRANSLUCENT;
-		}
+    public int getScreenWidth() {
+        return GetScreenWidth();
+    }
 
-		private final class BiLinearGradientPaintContext implements java.awt.PaintContext {
-			public BiLinearGradientPaintContext() {
-			}
+    public int getScreenHeight() {
+        return GetScreenHeight();
+    }
 
-			/**
-			 * Returns the interpolated color that you get if you multiply the delta between
-			 * color2 and color1 with the given fraction (for each channel). The fraction should
-			 * be a value between 0 and 1.
-			 * @param COLOR1 The first color as integer in the hex format 0xALPHA RED GREEN BLUE, e.g. 0xFF00FF00 for a pure green
-			 * @param COLOR2 The second color as integer in the hex format 0xALPHA RED GREEN BLUE e.g. 0xFFFF0000 for a pure red
-			 * @param fraction The fraction between those two colors that we would like to get e.g. 0.5f will result in the color 0xFF808000
-			 * @return the interpolated color between color1 and color2 calculated by the given fraction
-			 */
-			private java.awt.Color interpolateColor(final java.awt.Color COLOR1, final java.awt.Color COLOR2, float fraction) {
-				fraction = Math.min(fraction, 1f);
-				fraction = Math.max(fraction, 0f);
+    public void clearBackground(int rgba) {
+        int sp = spSave();
+        try {
+            ClearBackground(stackColor(rgba));
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				final float RED1 = COLOR1.getRed() * INT_TO_FLOAT_CONST;
-				final float GREEN1 = COLOR1.getGreen() * INT_TO_FLOAT_CONST;
-				final float BLUE1 = COLOR1.getBlue() * INT_TO_FLOAT_CONST;
-				final float ALPHA1 = COLOR1.getAlpha() * INT_TO_FLOAT_CONST;
+    public void drawRectangle(int x, int y, int w, int h, int rgba) {
+        int sp = spSave();
+        try {
+            DrawRectangle(x, y, w, h, stackColor(rgba));
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				final float RED2 = COLOR2.getRed() * INT_TO_FLOAT_CONST;
-				final float GREEN2 = COLOR2.getGreen() * INT_TO_FLOAT_CONST;
-				final float BLUE2 = COLOR2.getBlue() * INT_TO_FLOAT_CONST;
-				final float ALPHA2 = COLOR2.getAlpha() * INT_TO_FLOAT_CONST;
+    public void drawRectangleGradientEx(Rect r, int c00, int c10, int c01, int c11) {
+        int sp = spSave();
+        try {
+            DrawRectangleGradientEx(stackRect(r), stackColor(c00), stackColor(c10), stackColor(c01), stackColor(c11));
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				final float DELTA_RED = RED2 - RED1;
-				final float DELTA_GREEN = GREEN2 - GREEN1;
-				final float DELTA_BLUE = BLUE2 - BLUE1;
-				final float DELTA_ALPHA = ALPHA2 - ALPHA1;
+    public void drawText(String s, float x, float y, float size, int tint) {
+        if (s == null)
+            return;
+        float adv = Math.max(1, GetMaxCharWidth());
+        for (int i = 0; i < s.length();) {
+            int cp = s.codePointAt(i);
+            drawTextCodepoint(cp, x, y, size, tint);
+            x += adv;
+            i += Character.charCount(cp);
+        }
+    }
 
-				float red = RED1 + (DELTA_RED * fraction);
-				float green = GREEN1 + (DELTA_GREEN * fraction);
-				float blue = BLUE1 + (DELTA_BLUE * fraction);
-				float alpha = ALPHA1 + (DELTA_ALPHA * fraction);
+    public void drawTextCodepoint(int codepoint, float x, float y, float size, int tint) {
+        int sp = spSave();
+        try {
+            long pos = mir_allocate(8);
+            mir_write_float(pos, x);
+            mir_write_float(pos + 4, y);
+            DrawTextCodepoint(0L, codepoint, pos, size, stackColor(tint));
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				red = Math.min(red, 1f);
-				red = Math.max(red, 0f);
-				green = Math.min(green, 1f);
-				green = Math.max(green, 0f);
-				blue = Math.min(blue, 1f);
-				blue = Math.max(blue, 0f);
-				alpha = Math.min(alpha, 1f);
-				alpha = Math.max(alpha, 0f);
+    // ==== Wrappers raygui 3.5 ====
 
-				return new java.awt.Color(red, green, blue, alpha);
-			}
+    public void guiSetStyle(int control, int property, int value) {
+        GuiSetStyle(control, property, value);
+    }
 
-			/**
-			 * Returns the color calculated by a bilinear interpolation by the two fractions in x and y direction.
-			 * To get the color of the point defined by FRACTION_X and FRACTION_Y with in the rectangle defined by the
-			 * for given colors we first calculate the interpolated color between COLOR_00 and COLOR_10 (x-direction) with
-			 * the given FRACTION_X. After that we calculate the interpolated color between COLOR_01 and COLOR_11 (x-direction)
-			 * with the given FRACTION_X. Now we interpolate between the two results of the former calculations (y-direction)
-			 * with the given FRACTION_Y.
-			 * @param COLOR_00 The color on the lower left corner of the square
-			 * @param COLOR_10 The color on the lower right corner of the square
-			 * @param COLOR_01 The color on the upper left corner of the square
-			 * @param COLOR_11 The color on the upper right corner of the square
-			 * @param FRACTION_X The fraction of the point in x direction (between COLOR_00 and COLOR_10 or COLOR_01 and COLOR_11) range: 0.0f .. 1.0f
-			 * @param FRACTION_Y The fraction of the point in y direction (between COLOR_00 and COLOR_01 or COLOR_10 and COLOR_11) range: 0.0f .. 1.0f
-			 * @return the color of the point defined by fraction_x and fraction_y in the square defined by the for colors
-			 */
-			private java.awt.Color bilinearInterpolateColor(final java.awt.Color COLOR_00, final java.awt.Color COLOR_10, final java.awt.Color COLOR_01, final java.awt.Color COLOR_11,
-					final float FRACTION_X, final float FRACTION_Y) {
-				final java.awt.Color INTERPOLATED_COLOR_X1 = interpolateColor(COLOR_00, COLOR_10, FRACTION_X);
-				final java.awt.Color INTERPOLATED_COLOR_X2 = interpolateColor(COLOR_01, COLOR_11, FRACTION_X);
-				return interpolateColor(INTERPOLATED_COLOR_X1, INTERPOLATED_COLOR_X2, FRACTION_Y);
-			}
+    public int guiGetStyle(int control, int property) {
+        return GuiGetStyle(control, property);
+    }
 
-			@Override
-			public void dispose() {
-			}
+    public boolean guiWindowBox(Rect r, String title) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTxt = (title != null) ? cStringConst(title) : 0L;
+            return GuiWindowBox(pRect, pTxt) == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-			@Override
-			public java.awt.image.ColorModel getColorModel() {
-				return java.awt.image.ColorModel.getRGBdefault();
-			}
+    public void guiDummyRec(Rect r, String text) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? cStringConst(text) : 0L;
+            GuiDummyRec(pRect, pTxt);
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-			@Override
-			public java.awt.image.Raster getRaster(final int X, final int Y, final int TILE_WIDTH, final int TILE_HEIGHT) {
-				// Get the offset given by the height of the titlebar
-				if (titleBarHeight == -1) {
-					titleBarHeight = Y;
-				}
+    public boolean guiButton(Rect r, String text) {
+        int sp = spSave();
+        try {
+            return GuiButton(stackRect(r), cStringConst(text)) == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				// Create raster for given colormodel
-				final java.awt.image.WritableRaster RASTER = getColorModel().createCompatibleWritableRaster(TILE_WIDTH, TILE_HEIGHT);
+    public boolean guiLabelButton(Rect r, String text) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? cStringConst(text) : 0L;
+            return GuiLabelButton(pRect, pTxt) == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				// Create data array with place for red, green, blue and alpha values
-				final int[] DATA = new int[(TILE_WIDTH * TILE_HEIGHT * 4)];
-				java.awt.Color currentColor;
+    public boolean guiCheckBox(Rect r, String text, boolean checked) {
+        int sp = spSave();
+        try {
+            return GuiCheckBox(stackRect(r), cStringConst(text), checked ? 1 : 0) != 0;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				float fraction_x = (X - BOUNDS.x) * FRACTION_X_STEPSIZE;
-				float fraction_y = (Y - BOUNDS.y - titleBarHeight) * FRACTION_Y_STEPSIZE;
+    public boolean guiTextBox(Rect r, RefString buf, int maxLen, boolean edit) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pBuf = stackCharBuffer(buf, maxLen);
+            int ret = GuiTextBox(pRect, pBuf, maxLen, edit ? 1 : 0);
+            readBackCharBuffer(pBuf, buf, maxLen);
+            return ret == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				fraction_x = Math.min(fraction_x, 1f);
-				fraction_y = Math.min(fraction_y, 1f);
+    public boolean guiSpinner(Rect r, String text, RefInt value, int min, int max, boolean edit) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pText = (text != null) ? cStringConst(text) : 0;
+            long pVal = stackInt(value.v);
+            int ret = GuiSpinner(pRect, pText, pVal, min, max, edit ? 1 : 0);
+            value.v = mir_read_int(pVal);
+            return ret == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				for (int tileY = 0; tileY < TILE_HEIGHT; tileY++) {
-					for (int tileX = 0; tileX < TILE_WIDTH; tileX++) {
-						currentColor = bilinearInterpolateColor(COLOR_00, COLOR_10, COLOR_01, COLOR_11, fraction_x, fraction_y);
+    public boolean guiValueBox(Rect r, String text, RefInt value, int min, int max, boolean edit) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pText = (text != null) ? cStringConst(text) : 0;
+            long pVal = stackInt(value.v);
+            int ret = GuiValueBox(pRect, pText, pVal, min, max, edit ? 1 : 0);
+            value.v = mir_read_int(pVal);
+            return ret == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-						fraction_x += FRACTION_X_STEPSIZE;
-						fraction_x = Math.min(fraction_x, 1f);
+    public int guiComboBox(Rect r, String items, int active) {
+        int sp = spSave();
+        try {
+            return GuiComboBox(stackRect(r), cStringConst(items), active);
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-						// Fill data array with calculated color values
-						final int BASE = (tileY * TILE_WIDTH + tileX) * 4;
-						DATA[BASE + 0] = currentColor.getRed();
-						DATA[BASE + 1] = currentColor.getGreen();
-						DATA[BASE + 2] = currentColor.getBlue();
-						DATA[BASE + 3] = currentColor.getAlpha();
-					}
-					fraction_x = (X - BOUNDS.x) * FRACTION_X_STEPSIZE;
-					fraction_y += FRACTION_Y_STEPSIZE;
-					fraction_y = Math.min(fraction_y, 1f);
-				}
+    public boolean guiDropdownBox(Rect r, String items, RefInt active, boolean edit) {
+        int sp = spSave();
+        try {
+            long pAct = stackInt(active.v);
+            int ret = GuiDropdownBox(stackRect(r), cStringConst(items), pAct, edit ? 1 : 0);
+            active.v = mir_read_int(pAct);
+            return ret == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				// Fill the raster with the data
-				RASTER.setPixels(0, 0, TILE_WIDTH, TILE_HEIGHT, DATA);
+    public float guiSlider(Rect r, String left, String right, float value, float min, float max) {
+        int sp = spSave();
+        try {
+            long pL = (left != null) ? cStringConst(left) : 0;
+            long pR = (right != null) ? cStringConst(right) : 0;
+            return GuiSlider(stackRect(r), pL, pR, value, min, max);
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-				return RASTER;
-			}
-		}
+    public float guiSliderBar(Rect r, String left, String right, float value, float min, float max) {
+        int sp = spSave();
+        try {
+            long pL = (left != null) ? cStringConst(left) : 0;
+            long pR = (right != null) ? cStringConst(right) : 0;
+            return GuiSliderBar(stackRect(r), pL, pR, value, min, max);
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-		@Override
-		public String toString() {
-			return "BiLinearGradientPaint";
-		}
-	}
+    public float guiProgressBar(Rect r, String left, String right, float value, float min, float max) {
+        int sp = spSave();
+        try {
+            long pL = (left != null) ? cStringConst(left) : 0;
+            long pR = (right != null) ? cStringConst(right) : 0;
+            return GuiProgressBar(stackRect(r), pL, pR, value, min, max);
+        } finally {
+            spRestore(sp);
+        }
+    }
 
-	public static void main(String[] args) {
-		Raygui raygui = new Raygui();
-		raygui.main();
-	}
+    public void guiGroupBox(Rect r, String text) {
+        int sp = spSave();
+        try {
+            GuiGroupBox(stackRect(r), text != null ? cStringConst(text) : 0);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public void guiPanel(Rect r, String text) {
+        int sp = spSave();
+        try {
+            GuiPanel(stackRect(r), text != null ? cStringConst(text) : 0);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public void guiStatusBar(Rect r, String text) {
+        int sp = spSave();
+        try {
+            GuiStatusBar(stackRect(r), text != null ? cStringConst(text) : 0);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public Rect guiScrollPanel(Rect r, String text, Rect content, Vec2 scroll) {
+        int sp = spSave();
+        try {
+            long pViewOut = mir_allocate(16);
+            long pView = stackRect(r);
+            long pText = (text != null) ? cStringConst(text) : 0;
+            long pContent = stackRect(content);
+            long pScroll = stackVec2(scroll);
+
+            GuiScrollPanel(pViewOut, pView, pText, pContent, pScroll);
+
+            // out-params
+            scroll.x = mir_read_float(pScroll);
+            scroll.y = mir_read_float(pScroll + 4);
+
+            return new Rect(mir_read_float(pViewOut), mir_read_float(pViewOut + 4), mir_read_float(pViewOut + 8), mir_read_float(pViewOut + 12));
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public String guiIconText(int iconId, String text) {
+        return "#" + iconId + "#" + (text != null ? text : "");
+    }
+
+    public void guiLabel(Rect r, String text) {
+        int sp = spSave();
+        try {
+            GuiLabel(stackRect(r), text != null ? cStringConst(text) : 0L);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public int guiListView(Rect r, String itemsSemicolon, RefInt scrollIndex, int active) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pText = cStringConst(itemsSemicolon != null ? itemsSemicolon : "");
+            long pScroll = stackInt(scrollIndex != null ? scrollIndex.v : 0);
+            int ret = GuiListView(pRect, pText, pScroll, active);
+            if (scrollIndex != null)
+                scrollIndex.v = mir_read_int(pScroll);
+            return ret; // active index (or -1)
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public int guiListViewEx(Rect r, String[] items, int count, RefInt focus, RefInt scrollIndex, int active) {
+        int sp = spSave();
+        try {
+            if (items == null)
+                items = new String[0];
+            count = Math.min(count, items.length);
+
+            long pRect = stackRect(r);
+
+            // Construct char** (table of pointers to c-strings)
+            long pList = mir_allocate((long) count * 8);
+            for (int i = 0; i < count; i++) {
+                long pi = cStringConst(items[i] != null ? items[i] : "");
+                mir_write_long(pList + (long) i * 8, pi);
+            }
+
+            long pFocus = stackInt(focus != null ? focus.v : -1);
+            long pScroll = stackInt(scrollIndex != null ? scrollIndex.v : 0);
+
+            int ret = GuiListViewEx(pRect, pList, count, pFocus, pScroll, active);
+
+            if (focus != null)
+                focus.v = mir_read_int(pFocus);
+            if (scrollIndex != null)
+                scrollIndex.v = mir_read_int(pScroll);
+            return ret; // active index (or -1)
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public boolean guiToggle(Rect r, String text, boolean active) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? cStringConst(text) : 0L;
+            int ret = GuiToggle(pRect, pTxt, active ? 1 : 0);
+            return ret == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public int guiToggleGroup(Rect r, String textMultiline, int active) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTxt = cStringConst(textMultiline != null ? textMultiline : "");
+            return GuiToggleGroup(pRect, pTxt, active);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public boolean guiTextBoxMulti(Rect r, RefString buf, int maxLen, boolean edit) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pBuf = stackCharBuffer(buf, maxLen);
+            int ret = GuiTextBoxMulti(pRect, pBuf, maxLen, edit ? 1 : 0);
+            readBackCharBuffer(pBuf, buf, maxLen);
+            return ret == 1;
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public int guiColorPicker(Rect r, String text, int colorRgba) {
+        int sp = spSave();
+        try {
+            long ret = mir_allocate(4); // Color (4 ubytes RGBA)
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? mir_get_string_ptr(text) : 0L;
+            long pCol = stackColor(colorRgba); // initial color
+
+            GuiColorPicker(ret, pRect, pTxt, pCol);
+
+            int rgba = ColorToInt(ret);
+            return rgba;
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public float guiColorBarAlpha(Rect r, String text, float alpha) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? cStringConst(text) : 0L;
+            return GuiColorBarAlpha(pRect, pTxt, alpha);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public int guiColorPanel(Rect r, String text, int colorRgba) {
+        int sp = spSave();
+        try {
+            long pRet = mir_allocate(4);
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? cStringConst(text) : 0L;
+            long pCol = stackColor(colorRgba);
+            GuiColorPanel(pRet, pRect, pTxt, pCol);
+            return ColorToInt(pRet);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public float guiColorBarHue(Rect r, String text, float hue) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? cStringConst(text) : 0L;
+            return GuiColorBarHue(pRect, pTxt, hue);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public void guiDrawIcon(int iconId, int x, int y, int pixelSize, int tintRgba) {
+        int sp = spSave();
+        try {
+            long pCol = stackColor(tintRgba);
+            GuiDrawIcon(iconId, x, y, pixelSize, pCol);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public Vec2 guiGrid(Rect r, String text, float spacing, int subdivs) {
+        int sp = spSave();
+        try {
+            long ret = mir_allocate(8); // Vec2 (x,y) -> 2 floats
+            long pRect = stackRect(r);
+            long pTxt = (text != null) ? mir_get_string_ptr(text) : 0L;
+
+            GuiGrid(ret, pRect, pTxt, spacing, subdivs);
+
+            float x = mir_read_float(ret);
+            float y = mir_read_float(ret + 4);
+            return new Vec2(x, y);
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public int guiMessageBox(Rect r, String title, String message, String buttons) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTitle = (title != null) ? cStringConst(title) : 0L;
+            long pMsg = (message != null) ? cStringConst(message) : 0L;
+            long pBtns = (buttons != null) ? cStringConst(buttons) : 0L;
+            return GuiMessageBox(pRect, pTitle, pMsg, pBtns); // index bouton (0..n-1) ou -1
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public int guiTextInputBox(Rect r, String title, String message, String buttons, RefString textBuf, int maxLen, RefBool secretView) {
+        int sp = spSave();
+        try {
+            long pRect = stackRect(r);
+            long pTitle = (title != null) ? cStringConst(title) : 0L;
+            long pMsg = (message != null) ? cStringConst(message) : 0L;
+            long pBtns = (buttons != null) ? cStringConst(buttons) : 0L;
+            long pText = stackCharBuffer(textBuf, maxLen);
+            long pSecret = (secretView != null) ? stackInt(secretView.v ? 1 : 0) : 0L;
+
+            int res = GuiTextInputBox(pRect, pTitle, pMsg, pBtns, pText, maxLen, pSecret);
+
+            readBackCharBuffer(pText, textBuf, maxLen);
+            if (secretView != null)
+                secretView.v = (mir_read_int(pSecret) != 0);
+
+            return res; // button clicked (0..n-1) or -1
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    // State / lock
+    public void guiSetState(int st) {
+        GuiSetState(st);
+    }
+
+    public void guiLock() {
+        GuiLock();
+    }
+
+    public void guiUnlock() {
+        GuiUnlock();
+    }
+
+    public boolean isKeyPressed(int k) {
+        return IsKeyPressed(k) == 1;
+    }
+
+    public boolean isKeyDown(int k) {
+        return IsKeyDown(k) == 1;
+    }
+
+    public boolean isMouseButtonPressed(int b) {
+        return IsMouseButtonPressed(b) == 1;
+    }
+
+    public boolean isMouseButtonDown(int b) {
+        return IsMouseButtonDown(b) == 1;
+    }
+
+    public int getCharPressed() {
+        return GetCharPressed();
+    }
+
+    public Vec2 getMousePosition() {
+        int sp = spSave();
+        try {
+            long p = mir_allocate(8);
+            GetMousePosition(p);
+            return new Vec2(mir_read_float(p), mir_read_float(p + 4));
+        } finally {
+            spRestore(sp);
+        }
+    }
+
+    public void demo() {
+
+        Raygui gui = this;
+
+        final int screenWidth = 690;
+        final int screenHeight = 560;
+
+        gui.initWindow(screenWidth, screenHeight, "raygui - controls test suite (Java)");
+        try {
+            gui.guiSetStyle(Raygui.DEFAULT, Raygui.TEXT_SIZE, 16);
+        } catch (Throwable ignore) {
+        }
+
+        int dropdownBox000Active = 0;
+        boolean dropDown000EditMode = false;
+
+        int dropdownBox001Active = 0;
+        boolean dropDown001EditMode = false;
+
+        Raygui.RefInt spinner001Value = new Raygui.RefInt(0);
+        boolean spinnerEditMode = false;
+
+        Raygui.RefInt valueBox002Value = new Raygui.RefInt(0);
+        boolean valueBoxEditMode = false;
+
+        Raygui.RefString textBoxText = new Raygui.RefString("Text box");
+        boolean textBoxEditMode = false;
+
+        Raygui.RefInt listViewScrollIndex = new Raygui.RefInt(0);
+        int listViewActive = -1;
+
+        Raygui.RefInt listViewExScrollIndex = new Raygui.RefInt(0);
+        int listViewExActive = 2;
+        Raygui.RefInt listViewExFocus = new Raygui.RefInt(-1);
+        String[] listViewExList = { "This", "is", "a", "list view", "with", "disable", "elements", "amazing!" };
+
+        Raygui.RefString multiTextBoxText = new Raygui.RefString("Multi text box");
+        boolean multiTextBoxEditMode = false;
+
+        int colorPickerValue = RED;
+
+        Raygui.RefInt sliderValue = new Raygui.RefInt(50);
+        Raygui.RefInt sliderBarValue = new Raygui.RefInt(60);
+        float progressValue = 0.4f;
+        boolean forceSquaredChecked = false;
+
+        float alphaValue = 0.5f;
+
+        int comboBoxActive = 1;
+
+        int toggleGroupActive = 0;
+
+        boolean showWindow = false; // for GuiWindowBox
+        boolean toggle001 = false; // for GuiToggle
+
+        Raygui.Vec2 viewScroll = new Raygui.Vec2(0, 0);
+
+        boolean exitWindow = false;
+        boolean showMessageBox = false;
+
+        Raygui.RefString textInput = new Raygui.RefString("");
+        boolean showTextInputBox = false;
+
+        Raygui.RefString textInputFileName = new Raygui.RefString("");
+
+        while (!exitWindow) {
+
+            if (gui.isKeyPressed(Raygui.KEY_ESCAPE))
+                showMessageBox = !showMessageBox;
+            if (gui.isKeyDown(Raygui.KEY_LEFT_CONTROL) && gui.isKeyPressed(Raygui.KEY_S))
+                showTextInputBox = true;
+
+            gui.beginDrawing();
+
+            try {
+                int bg = gui.guiGetStyle(Raygui.DEFAULT, Raygui.BACKGROUND_COLOR);
+                gui.clearBackground(bg);
+            } catch (Throwable t) {
+                gui.clearBackground(RAYWHITE);
+            }
+
+            if (dropDown000EditMode || dropDown001EditMode)
+                gui.guiLock();
+            else
+                gui.guiUnlock();
+
+            // ----- Column 1 -----
+            gui.guiSetStyle(Raygui.CHECKBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_RIGHT);
+            forceSquaredChecked = gui.guiCheckBox(new Raygui.Rect(25, 108, 15, 15), "FORCE CHECK!", forceSquaredChecked);
+
+            gui.guiSetStyle(Raygui.TEXTBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
+            if (gui.guiSpinner(new Raygui.Rect(25, 135, 125, 30), null, spinner001Value, 0, 100, spinnerEditMode))
+                spinnerEditMode = !spinnerEditMode;
+
+            if (gui.guiValueBox(new Raygui.Rect(25, 175, 125, 30), null, valueBox002Value, 0, 100, valueBoxEditMode))
+                valueBoxEditMode = !valueBoxEditMode;
+
+            gui.guiSetStyle(Raygui.TEXTBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_LEFT);
+            if (gui.guiTextBox(new Raygui.Rect(25, 215, 125, 30), textBoxText, 64, textBoxEditMode))
+                textBoxEditMode = !textBoxEditMode;
+
+            gui.guiSetStyle(Raygui.BUTTON, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
+            if (gui.guiButton(new Raygui.Rect(25, 255, 125, 30), gui.guiIconText(Raygui.ICON_FILE_SAVE, "Save File"))) {
+                showTextInputBox = true;
+            }
+
+            gui.guiGroupBox(new Raygui.Rect(25, 300, 125, 150), "STATES");
+            gui.guiSetState(Raygui.STATE_NORMAL);
+            gui.guiButton(new Raygui.Rect(30, 310, 115, 30), "NORMAL");
+            gui.guiSetState(Raygui.STATE_FOCUSED);
+            gui.guiButton(new Raygui.Rect(30, 345, 115, 30), "FOCUSED");
+            gui.guiSetState(Raygui.STATE_PRESSED);
+            gui.guiButton(new Raygui.Rect(30, 380, 115, 30), "#15#PRESSED");
+            gui.guiSetState(Raygui.STATE_DISABLED);
+            gui.guiButton(new Raygui.Rect(30, 415, 115, 30), "DISABLED");
+            gui.guiSetState(Raygui.STATE_NORMAL);
+
+            toggle001 = gui.guiToggle(new Raygui.Rect(25, 495, 125, 30), gui.guiIconText(Raygui.ICON_CURSOR_HAND, "Toggle me"), toggle001);
+
+            comboBoxActive = gui.guiComboBox(new Raygui.Rect(25, 460, 125, 30), "ONE;TWO;THREE;FOUR", comboBoxActive);
+
+            // Dropdowns
+            gui.guiSetStyle(Raygui.DROPDOWNBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_LEFT);
+            if (gui.guiDropdownBox(new Raygui.Rect(25, 65, 125, 30), "#01#ONE;#02#TWO;#03#THREE;#04#FOUR", new Raygui.RefInt(dropdownBox001Active), dropDown001EditMode)) {
+                dropDown001EditMode = !dropDown001EditMode;
+            }
+
+            gui.guiSetStyle(Raygui.DROPDOWNBOX, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
+            if (gui.guiDropdownBox(new Raygui.Rect(25, 25, 125, 30), "ONE;TWO;THREE", new Raygui.RefInt(dropdownBox000Active), dropDown000EditMode)) {
+                dropDown000EditMode = !dropDown000EditMode;
+            }
+
+            // ----- Column 2 -----
+            listViewActive = gui.guiListView(new Raygui.Rect(165, 25, 140, 140), "Charmander;Bulbasaur;#18#Squirtel;Pikachu;Eevee;Pidgey", listViewScrollIndex, listViewActive);
+
+            listViewExActive = gui.guiListViewEx(new Raygui.Rect(165, 180, 140, 200), listViewExList, listViewExList.length, listViewExFocus, listViewExScrollIndex,
+                    listViewExActive);
+
+            toggleGroupActive = gui.guiToggleGroup(new Raygui.Rect(165, 400, 140, 25), "#1#ONE\n#3#TWO\n#8#THREE\n#23#", toggleGroupActive);
+
+            gui.guiSetStyle(Raygui.LABEL, Raygui.TEXT_ALIGNMENT, Raygui.TEXT_ALIGN_CENTER);
+            if (gui.guiLabelButton(new Raygui.Rect(165, 510, 125, 20), "Show Window")) {
+                showWindow = true;
+            }
+
+            // ----- Column 3 -----
+            if (gui.guiTextBoxMulti(new Raygui.Rect(320, 25, 225, 140), multiTextBoxText, 256, multiTextBoxEditMode))
+                multiTextBoxEditMode = !multiTextBoxEditMode;
+
+            colorPickerValue = gui.guiColorPicker(new Raygui.Rect(320, 185, 196, 192), null, colorPickerValue);
+
+            sliderValue.v = Math.round(gui.guiSlider(new Raygui.Rect(355, 400, 165, 20), "TEST", String.format("%2.2f", (float) sliderValue.v), sliderValue.v, -50, 100));
+            sliderBarValue.v = Math.round(gui.guiSliderBar(new Raygui.Rect(320, 430, 200, 20), null, Integer.toString(sliderBarValue.v), sliderBarValue.v, 0, 100));
+            progressValue = gui.guiProgressBar(new Raygui.Rect(320, 460, 200, 20), null, null, progressValue, 0f, 1f);
+
+            // ----- Column 4 -----
+            Raygui.Rect view = gui.guiScrollPanel(new Raygui.Rect(560, 25, 100, 160), null, new Raygui.Rect(560, 25, 200, 400), viewScroll);
+
+            gui.guiPanel(new Raygui.Rect(560, 25 + 180, 100, 160), "Panel Info");
+
+            // Dummy rec : simple placeholder “muet”
+            gui.guiDummyRec(new Raygui.Rect(560, 25 + 180 + 160 + 5, 100, 18), "dummy");
+
+            gui.guiGrid(new Raygui.Rect(560, 25 + 180 + 180, 100, 120), null, 20f, 2);
+
+            gui.guiStatusBar(new Raygui.Rect(0, gui.getScreenHeight() - 20f, gui.getScreenWidth(), 20), "This is a status bar");
+
+            alphaValue = gui.guiColorBarAlpha(new Raygui.Rect(320, 490, 200, 30), null, alphaValue);
+
+            // Quelques icônes rendues directement (GuiDrawIcon)
+            // gui.guiDrawIcon(Raygui.ICON_COLOR_PICKER, 560, 400, 2, BLACK);
+            // gui.guiDrawIcon(Raygui.ICON_FILE_SAVE, 560, 400, 2, DARKGRAY);
+            gui.guiDrawIcon(Raygui.ICON_CAMERA, 560, 515, 1, Raygui.DARKGRAY);
+            gui.guiDrawIcon(Raygui.ICON_BOX_CENTER, 580, 515, 1, Raygui.DARKGRAY);
+            gui.guiDrawIcon(Raygui.ICON_FILE_CUT, 600, 515, 1, Raygui.DARKGRAY);
+            gui.guiDrawIcon(Raygui.ICON_CRACK_POINTS, 620, 515, 1, Raygui.DARKGRAY);
+
+            // Mini fenêtre (WindowBox) au-dessus
+            if (showWindow) {
+                // Si la croix (X) est cliquée, l'appel renvoie true → on la masque
+                if (gui.guiWindowBox(new Raygui.Rect(390, 25, 200, 110), "Mini Window")) {
+                    showWindow = false;
+                } else {
+                    gui.guiLabel(new Raygui.Rect(400, 60, 200, 20), "Hello from WindowBox!");
+                    gui.guiDrawIcon(Raygui.ICON_INFO, 400, 90, 2, BLUE);
+                }
+            }
+
+            // Overlays
+            if (showMessageBox) {
+                gui.drawRectangle(0, 0, gui.getScreenWidth(), gui.getScreenHeight(), Raygui.fade(Raygui.RAYWHITE, 0.8f));
+                int result = gui.guiMessageBox(new Raygui.Rect(gui.getScreenWidth() / 2f - 125, gui.getScreenHeight() / 2f - 50, 250, 100),
+                        gui.guiIconText(Raygui.ICON_EXIT, "Close Window"), "Do you really want to exit?", "Yes;No");
+                if (result == 0 || result == 2)
+                    showMessageBox = false;
+                else if (result == 1)
+                    exitWindow = true;
+            }
+
+            if (showTextInputBox) {
+                gui.drawRectangle(0, 0, gui.getScreenWidth(), gui.getScreenHeight(), Raygui.fade(Raygui.RAYWHITE, 0.8f));
+                int result = gui.guiTextInputBox(new Raygui.Rect(gui.getScreenWidth() / 2f - 120, gui.getScreenHeight() / 2f - 60, 240, 140), "Save",
+                        gui.guiIconText(Raygui.ICON_FILE_SAVE, "Save file as..."), "Ok;Cancel", textInput, 255, null);
+                if (result == 1) {
+                    textInputFileName = textInput;
+                    System.out.println("Save file: " + textInputFileName);
+                }
+                if (result == 0 || result == 1 || result == 2) {
+                    showTextInputBox = false;
+                }
+            }
+
+            gui.endDrawing();
+
+            try {
+                Thread.sleep(16);
+            } catch (InterruptedException ignored) {
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        Raygui raygui = new Raygui();
+        raygui.demo();
+    }
 
 }
