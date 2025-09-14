@@ -14,15 +14,15 @@ public class Runtime {
     private static final int PTR_SIZE = 8;
     private static final int VA_ARG_BUFFER_SIZE = 8;
 
-    private byte[] memory = new byte[5000000];
+    private byte[] memory;
 
     private int stackPosition = 8; // Do not start at 0 to avoid weird bugs caused by comparisons with 0
-    private int maxStackSize = 1000000;
-    private int varArgsBufferAddress = maxStackSize;
-    private int functionSpaceStartAddress = varArgsBufferAddress + VA_ARG_BUFFER_SIZE;
-    private int functionSpaceSize = 1000;
-    private int nextfunctionPointer = functionSpaceStartAddress;
-    private int heapStartAddress = functionSpaceStartAddress + functionSpaceSize;
+    private final int maxStackSize;
+    private final int varArgsBufferAddress;
+    private final int functionSpaceStartAddress;
+    private final int functionSpaceSize;
+    private int nextfunctionPointer;
+    private final int heapStartAddress;
     private TreeMap<Integer, MemoryBlock> memoryBlockMap = new TreeMap<>();
     private TreeMap<Integer, VarArgs> varArgsMap = new TreeMap<>();
     private HashMap<String, Integer> stringMap = new HashMap<>();
@@ -32,6 +32,21 @@ public class Runtime {
     public static final int FD_STDOUT = 1;
     public static final int FD_STDERR = 2;
     public static final int EOF = -1;
+    
+    public Runtime() {
+        this(1000000);
+    }
+    
+    public Runtime(int memorySize) {
+        // Define memory sections
+        memory = new byte[memorySize];
+        maxStackSize = memorySize / 5;
+        varArgsBufferAddress = maxStackSize;
+        functionSpaceStartAddress = varArgsBufferAddress + VA_ARG_BUFFER_SIZE;
+        functionSpaceSize = 1000;
+        nextfunctionPointer = functionSpaceStartAddress;
+        heapStartAddress = functionSpaceStartAddress + functionSpaceSize;
+    }
 
     public int growMemory(int minSize) {
         int newSize = memory.length * 2;
@@ -162,52 +177,47 @@ public class Runtime {
 
     public short mir_read_short(long longAddr) {
         int addr = (int) longAddr;
-        int b1 = memory[addr];
-        int b2 = memory[addr + 1];
-        int i = ((b1 & 0xFF) << 8) | (b2 & 0xFF);
-        return (short) i;
+        int b1 = memory[addr] & 0xFF;
+        int b2 = memory[addr + 1] & 0xFF;
+        return (short) ((b2 << 8) | b1);
     }
 
     public void mir_write_short(long longAddr, long v) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         int addr = (int) longAddr;
-        memory[addr] = (byte) ((v >> 8) & 0xFF);
-        memory[addr + 1] = (byte) (v & 0xFF);
+        memory[addr]     = (byte) (v & 0xFF);
+        memory[addr + 1] = (byte) ((v >> 8) & 0xFF);
     }
     
     public int mir_read_ushort(long longAddr) {
         int addr = (int) longAddr;
         int b1 = memory[addr] & 0xFF;
         int b2 = memory[addr + 1] & 0xFF;
-        return (b1 << 8) | b2;
+        return (b2 << 8) | b1;
     }
 
     public void mir_write_ushort(long longAddr, long v) {
         int addr = (int) longAddr;
         int val = (int) (v & 0xFFFFL);
-        memory[addr] = (byte) ((val >> 8) & 0xFF);
-        memory[addr + 1] = (byte) (val & 0xFF);
+        memory[addr]     = (byte) (val & 0xFF);
+        memory[addr + 1] = (byte) ((val >> 8) & 0xFF);
     }
 
     public void mir_write_int(long longAddr, long v) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         int addr = (int) longAddr;
         int i = (int) v;
-        memory[addr] = (byte) ((i >> 24) & 0xFF);
-        memory[addr + 1] = (byte) ((i >> 16) & 0xFF);
-        memory[addr + 2] = (byte) ((i >> 8) & 0xFF);
-        memory[addr + 3] = (byte) (i & 0xFF);
+        memory[addr]     = (byte) (i & 0xFF);
+        memory[addr + 1] = (byte) ((i >> 8) & 0xFF);
+        memory[addr + 2] = (byte) ((i >> 16) & 0xFF);
+        memory[addr + 3] = (byte) ((i >> 24) & 0xFF);
     }
 
     public int mir_read_int(long longAddr) {
         int addr = (int) longAddr;
-        int b1 = memory[addr];
-        int b2 = memory[addr + 1];
-        int b3 = memory[addr + 2];
-        int b4 = memory[addr + 3];
-        int i = ((b1 & 0xFF) << 24) | ((b2 & 0xFF) << 16) | ((b3 & 0xFF) << 8) | (b4 & 0xFF);
-        // System.out.println("readbyte(" + addr + "): " + b);
-        return i;
+        int b1 = memory[addr] & 0xFF;
+        int b2 = memory[addr + 1] & 0xFF;
+        int b3 = memory[addr + 2] & 0xFF;
+        int b4 = memory[addr + 3] & 0xFF;
+        return (b4 << 24) | (b3 << 16) |  (b2 << 8) | b1;
     }
 
     public void mir_write_uint(long longAddr, long v) {
@@ -220,31 +230,28 @@ public class Runtime {
     }
 
     public void mir_write_long(long longAddr, long l) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         int addr = (int) longAddr;
-        memory[addr] = (byte) ((l >> 56) & 0xFF);
-        memory[addr + 1] = (byte) ((l >> 48) & 0xFF);
-        memory[addr + 2] = (byte) ((l >> 40) & 0xFF);
-        memory[addr + 3] = (byte) ((l >> 32) & 0xFF);
-        memory[addr + 4] = (byte) ((l >> 24) & 0xFF);
-        memory[addr + 5] = (byte) ((l >> 16) & 0xFF);
-        memory[addr + 6] = (byte) ((l >> 8) & 0xFF);
-        memory[addr + 7] = (byte) (l & 0xFF);
+        memory[addr]     = (byte) (l & 0xFF);
+        memory[addr + 1] = (byte) ((l >> 8) & 0xFF);
+        memory[addr + 2] = (byte) ((l >> 16) & 0xFF);
+        memory[addr + 3] = (byte) ((l >> 24) & 0xFF);
+        memory[addr + 4] = (byte) ((l >> 32) & 0xFF);
+        memory[addr + 5] = (byte) ((l >> 40) & 0xFF);
+        memory[addr + 6] = (byte) ((l >> 48) & 0xFF);
+        memory[addr + 7] = (byte) ((l >> 56) & 0xFF);
     }
 
     public long mir_read_long(long longAddr) {
         int addr = (int) longAddr;
-        long b1 = ((long) (memory[addr] & 0xFF)) << 56;
-        long b2 = ((long) (memory[addr + 1] & 0xFF)) << 48;
-        long b3 = ((long) (memory[addr + 2] & 0xFF)) << 40;
-        long b4 = ((long) (memory[addr + 3] & 0xFF)) << 32;
-        long b5 = ((long) (memory[addr + 4] & 0xFF)) << 24;
-        long b6 = ((long) (memory[addr + 5] & 0xFF)) << 16;
-        long b7 = ((long) (memory[addr + 6] & 0xFF)) << 8;
-        long b8 = ((long) (memory[addr + 7] & 0xFF));
-        long l = b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8;
-        // System.out.println("readbyte(" + addr + "): " + b);
-        return l;
+        long b1 =  (long) (memory[addr]     & 0xFF);
+        long b2 = ((long) (memory[addr + 1] & 0xFF)) << 8;
+        long b3 = ((long) (memory[addr + 2] & 0xFF)) << 16;
+        long b4 = ((long) (memory[addr + 3] & 0xFF)) << 24;
+        long b5 = ((long) (memory[addr + 4] & 0xFF)) << 32;
+        long b6 = ((long) (memory[addr + 5] & 0xFF)) << 40;
+        long b7 = ((long) (memory[addr + 6] & 0xFF)) << 48;
+        long b8 = ((long) (memory[addr + 7] & 0xFF)) << 56;
+        return b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8;
     }
 
     public void mir_write_ulong(long longAddr, long l) {
@@ -364,7 +371,7 @@ public class Runtime {
     }
     
     public long mir_set_data_double(double v) {
-        long addr = mir_allocate(4);
+        long addr = mir_allocate(8);
         mir_write_double(addr, v);
         return addr;
     }
