@@ -59,7 +59,7 @@ Prereqs: make, a C99 compiler, and a JDK 1.2+
 
 ``` make m2j```
 
-#### Build test program & demo ([raygui 3.5](https://github.com/raysan5/raygui) port in Java)  
+#### Build test program & demo
 
 ```
 cd mir2j
@@ -71,6 +71,8 @@ or
 ```
 ./compile-raygui.sh
 ```
+
+The generated raygui library also has its own repository : [raygui4j](https://github.com/glegris/raygui4j)  
 
 ## Status
 - Experimental. Focus is correctness and clarity of the translation path.
