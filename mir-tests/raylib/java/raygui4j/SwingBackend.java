@@ -35,7 +35,7 @@ public class SwingBackend implements Backend {
     private Font sizedFont = baseMono;
 
     @Override
-    public void initWindow(int width, int height, String title, InputSink sink) {
+    public void initWindow(final int width, final int height, String title, InputSink sink) {
         this.sink = sink;
 
         surface = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -77,8 +77,11 @@ public class SwingBackend implements Backend {
     public void beginFrame() {
         // Force upstream AWT processing if necessary
         try {
-            SwingUtilities.invokeAndWait(() -> {
-                /* flush EDT */ });
+            /* flush EDT */
+            SwingUtilities.invokeAndWait(new Runnable() {
+                public void run() {
+                }
+            });
         } catch (Exception ignored) {
         }
     }
@@ -86,9 +89,11 @@ public class SwingBackend implements Backend {
     @Override
     public void endFrame() {
         try {
-            SwingUtilities.invokeAndWait(() -> {
-                if (panel != null)
-                    panel.paintImmediately(0, 0, surface.getWidth(), surface.getHeight());
+            SwingUtilities.invokeAndWait(new Runnable() {
+                public void run() {
+                    if (panel != null)
+                        panel.paintImmediately(0, 0, surface.getWidth(), surface.getHeight());
+                }
             });
         } catch (Exception ignored) {
         }
