@@ -1205,7 +1205,21 @@ void out_item (MIR_context_t ctx, FILE *f, MIR_item_t item) {
     var = VARR_GET (MIR_var_t, curr_func->vars, i);
     if (var.type == MIR_T_I64 || var.type == MIR_T_F || var.type == MIR_T_D || var.type == MIR_T_LD)
       continue;
-    fprintf (f, "  long %s = _%s;\n", var.name, var.name);  // int64_t
+  
+    // Ensure unsigned params are zero-extended when moved to 64-bit Java 'long'
+    if (var.type == MIR_T_U8) {
+      // dst = ((long)(int)_arg) & 0xFFL;
+      fprintf (f, "  long %s = (((long)(int)_%s) & 0xFFL);\n", var.name, var.name);
+    } else if (var.type == MIR_T_U16) {
+      // dst = ((long)(int)_arg) & 0xFFFFL;
+      fprintf (f, "  long %s = (((long)(int)_%s) & 0xFFFFL);\n", var.name, var.name);
+    } else if (var.type == MIR_T_U32) {
+      // dst = ((long)_arg) & 0xFFFFFFFFL;  // keep semantics for 32-bit unsigned
+      fprintf (f, "  long %s = (((long)_%s) & 0xFFFFFFFFL);\n", var.name, var.name);
+    } else {
+      // signed or pointer types are fine as-is
+      fprintf (f, "  long %s = _%s;\n", var.name, var.name);
+    }
   }
   nlocals = VARR_LENGTH (MIR_var_t, curr_func->vars) - curr_func->nargs;
   for (i = 0; i < nlocals; i++) {
