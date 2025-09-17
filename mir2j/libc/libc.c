@@ -72,17 +72,9 @@ FILE* const stdin  = &__stdin;
 FILE* const stdout = &__stdout;
 FILE* const stderr = &__stderr;
 
-/**
- * @param stream the stream to close
- * @return zero on success, or `-errno` on error
- */
-int mir_sysio_close(FILE *stream);
-
-/**
- * @param stream the stream to access
- * @return a pointer to the stream's error number
- */
-int* mir_sysio_errno(FILE *stream);
+int mir_sysio_open(const char *filename, const char *mode);
+int mir_sysio_close_fd(int fd);
+long mir_sysio_read(int fd, void *buffer, unsigned long count);
 
 /**
  * @param stream the output stream
@@ -91,6 +83,10 @@ int* mir_sysio_errno(FILE *stream);
  * @return the number of bytes written, or `-errno`
  */
 long mir_sysio_write(int fd, const void * restrict buffer, unsigned long count);
+
+long  mir_sysio_seek(int fd, long offset, int whence);
+long  mir_sysio_tell(int fd);
+int   mir_sysio_feof(int fd);
 
 /**
  * Retrieve the time of the specified clock clk_id
@@ -679,45 +675,115 @@ static int outputString(FILE * restrict stream, const char *s) {
 */
 
 FILE* fopen(const char *filename, const char *mode) {
-    FILE *stream = calloc(1, sizeof(FILE));
+    int fd = mir_sysio_open(filename, mode);
+    if (fd < 0) { errno = -fd; return NULL; }
+    FILE *stream = (FILE*)calloc(1, sizeof(FILE));
+    if (!stream) { mir_sysio_close_fd(fd); errno = ENOMEM; return NULL; }
+    stream->fd = fd;
+    return stream;
+}
+
+FILE* freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream) {
+    if (!stream) return fopen(filename, mode);
+    int fd = mir_sysio_open(filename, mode);
+    if (fd < 0) { errno = -fd; return NULL; }
+    if (stream->fd >= 0) mir_sysio_close_fd(stream->fd);
+    stream->fd = fd;
+    stream->error = 0;
     return stream;
 }
 
 int fclose(FILE *stream) {
+    if (!stream) { errno = EINVAL; return EOF; }
+    int rc = mir_sysio_close_fd(stream->fd);
     free(stream);
+    if (rc < 0) { errno = -rc; return EOF; }
     return 0;
+}
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    if (!stream || !ptr) { errno = EINVAL; return 0; }
+    unsigned long want = size * nmemb;
+    long rc = mir_sysio_read(stream->fd, ptr, want);
+    if (rc < 0) { errno = -rc; return 0; }
+    return (size_t)(rc / (long)size);
+}
+
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    if (!stream || !ptr) { errno = EINVAL; return 0; }
+    unsigned long want = size * nmemb;
+    long rc = mir_sysio_write(stream->fd, ptr, want);
+    if (rc < 0) { errno = -rc; return 0; }
+    return (size_t)(rc / (long)size);
 }
 
 int feof(FILE *stream) {
-    return 0;
-}
-
-int fflush(FILE *stream) {
-    return 0;
-}
-
-size_t fread(void *ptr, size_t size, size_t count, FILE *stream) {
-    return 0;
-}
-
-size_t fwrite(const void * ptr, size_t size, size_t count, FILE *stream) {
-    return 0;
-}
-
-FILE* freopen(const char *restrict filename, const char *restrict mode, FILE *restrict stream) {
-    return NULL;
+    if (!stream) { errno = EINVAL; return 0; }
+    int rc = mir_sysio_feof(stream->fd);
+    if (rc < 0) { errno = -rc; return 0; }
+    return rc;
 }
 
 long int ftell(FILE *stream) {
-    return -1L;
+    if (!stream) { errno = EINVAL; return -1L; }
+    long rc = mir_sysio_tell(stream->fd);
+    if (rc < 0) { errno = -rc; return -1L; }
+    return rc;
 }
 
 int fseek(FILE *stream, long int offset, int whence) {
-    return -1;
+    if (!stream) { errno = EINVAL; return -1; }
+    long rc = mir_sysio_seek(stream->fd, offset, whence);
+    if (rc < 0) { errno = -rc; return -1; }
+    return 0;
 }
 
-char *fgets(char * restrict s, int n, FILE * restrict stream) {
-    return NULL;
+char *fgets(char *restrict s, int n, FILE *restrict stream) {
+    if (!stream || !s || n <= 1) { errno = EINVAL; return NULL; }
+    int i = 0;
+    while (i < n - 1) {
+        char ch;
+        long rc = mir_sysio_read(stream->fd, &ch, 1);
+        if (rc < 0) { errno = -rc; return (i > 0) ? s : NULL; }
+        if (rc == 0) break; /* EOF */
+        s[i++] = ch;
+        if (ch == '\n') break;
+    }
+    if (i == 0) return NULL;
+    s[i] = '\0';
+    return s;
+}
+
+int fputs(const char *s, FILE *stream) {
+    if (!stream || !s) { errno = EINVAL; return EOF; }
+    long rc = mir_sysio_write(stream->fd, s, strlen(s));
+    if (rc < 0) { errno = -rc; return EOF; }
+    return (int)rc;
+}
+
+int fputc(int ch, FILE *stream) {
+    unsigned char c = (unsigned char)ch;
+    long rc = mir_sysio_write(stream->fd, &c, 1);
+    if (rc < 0) { errno = -rc; return EOF; }
+    return c;
+}
+
+int fgetc(FILE *stream) {
+    if (!stream) { errno = EINVAL; return EOF; }
+    unsigned char ch = 0;
+    long rc = mir_sysio_read(stream->fd, &ch, 1);
+    if (rc < 0) { errno = (int)-rc; return EOF; }  // backend error
+    if (rc == 0) return EOF;                       // EOF
+    return (int)ch;
+}
+
+int fflush(FILE *stream) {
+    /* No stdio buffering layer is implemented:
+       - outputBuffer() writes directly via mir_sysio_write()
+       - Java backend flushes stdout/stderr itself
+       Therefore there is nothing to flush here. */
+    (void)stream;
+    return 0;
 }
 
 int sscanf(const char * restrict s, const char * restrict format, ...) {
@@ -741,26 +807,8 @@ int fscanf(FILE * restrict stream, const char * restrict format, ...) {
     return rc;
 }
 
-int fgetc(FILE *stream) {
-    return EOF;
-}
-
 int getc(FILE *stream) {
     return fgetc(stream);
-}
-
-int fputs(const char * restrict str, FILE * restrict stream) {
-	const long rc = mir_sysio_write(stream->fd, str, strlen(str));
-	if (rc < 0) {
-		errno = -((int)rc);
-		return EOF;
-	}
-	return 0; /* a nonnegative return value indicates success */
-}
-
-int fputc(int c, FILE *stream) {
-	const char buffer[2] = { (char)c, '\0' };
-	return fputs(buffer, stream) != EOF ? c : EOF;
 }
 
 int putc(int c, FILE *stream) {

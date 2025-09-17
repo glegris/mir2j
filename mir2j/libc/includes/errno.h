@@ -8,9 +8,10 @@ extern errno_t __errno;
 
 #define errno __errno
 
-#define EDOM 1
-#define EILSEQ 2
-#define ERANGE 3
+#define EDOM 33 /* Numerical argument out of domain */
+#define EILSEQ 84 /* Invalid or incomplete multibyte or wide character */
+#define ERANGE 34 /* Numerical result out of range*/
+#define	ENOMEM 12 /* Not enough core */
 
 // Needed to build with libraries from Linux and Windows.
 #if defined(__unix__)

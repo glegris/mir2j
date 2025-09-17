@@ -51,13 +51,10 @@ public class Runtime {
     private HashMap<String, Integer> stringMap = new HashMap<>();
     private FunctionMap functionMap = new FunctionMap();
 
-    public static final int FD_STDIN  = 0;
-    public static final int FD_STDOUT = 1;
-    public static final int FD_STDERR = 2;
     public static final int EOF = -1;
     
     public Runtime() {
-        this(1000000);
+        this(20000000);
     }
     
     public Runtime(int memorySize) {
@@ -316,7 +313,6 @@ public class Runtime {
     }
 
     public long mir_set_data_bytes(byte[] s) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(s.length);
         for (int i = 0; i < s.length; i++) {
             mir_write_byte(addr + i, s[i]);
@@ -325,7 +321,6 @@ public class Runtime {
     }
 
     public long mir_set_data_ubytes(short[] s) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(s.length);
         for (int i = 0; i < s.length; i++) {
             mir_write_ubyte(addr + i, s[i]);
@@ -334,16 +329,22 @@ public class Runtime {
     }
 
     public long mir_set_data_shorts(short[] s) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(s.length * 2);
         for (int i = 0; i < s.length; i++) {
             mir_write_short(addr + i * 2, s[i]);
         }
         return addr;
     }
+    
+    public long mir_set_data_ushorts(short[] s) {
+        long addr = mir_allocate(s.length * 2);
+        for (int i = 0; i < s.length; i++) {
+            mir_write_ushort(addr + i * 2, s[i]);
+        }
+        return addr;
+    }
 
     public long mir_set_data_longs(long[] s) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(s.length * 8);
         for (int i = 0; i < s.length; i++) {
             mir_write_long(addr + i * 8, s[i]);
@@ -352,28 +353,42 @@ public class Runtime {
     }
 
     public long mir_set_data_byte(long v) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(1);
         mir_write_byte(addr, v);
         return addr;
     }
+    
+    public long mir_set_data_ubyte(long v) {
+        long addr = mir_allocate(1);
+        mir_write_ubyte(addr, v);
+        return addr;
+    }
+    
+    public long mir_set_data_short(long v) {
+        long addr = mir_allocate(2);
+        mir_write_short(addr, v);
+        return addr;
+    }
+    
+    public long mir_set_data_ushort(long v) {
+        long addr = mir_allocate(2);
+        mir_write_ushort(addr, v);
+        return addr;
+    }
 
     public long mir_set_data_int(long v) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(4);
         mir_write_int(addr, v);
         return addr;
     }
 
     public long mir_set_data_uint(long v) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(4);
         mir_write_uint(addr, v);
         return addr;
     }
 
     public long mir_set_data_long(long v) {
-        // System.out.println("writebyte(" + addr + "," + b + ")");
         long addr = mir_allocate(8);
         mir_write_long(addr, v);
         return addr;
@@ -626,43 +641,6 @@ public class Runtime {
         mir_write_long(argvAddr + (long) argc * PTR_SIZE, 0L);
         return argvAddr;
     }
-    
-    /* Write: fd=1 -> stdout, fd=2 -> stderr. Return number of written bytes or -errno */
-    public long mir_sysio_write(int fd, long bufferAddr, long count) {
-        int len = (int) count;
-        if (len < 0) return -1; // EINVAL simplified
-
-        byte[] buf = new byte[len];
-        System.arraycopy(memory, (int) bufferAddr, buf, 0, len);
-
-        try {
-            String s = new String(buf); // Ok for text (printf/fputs)
-            if (fd == FD_STDOUT) {
-                System.out.print(s);
-            } else if (fd == FD_STDERR) {
-                System.err.print(s);
-            } else {
-                // No real file yet: simulate ENOSYS
-                return -38; // -ENOSYS
-            }
-            return count;
-        } catch (Exception e) {
-            return -5; // -EIO
-        }
-    }
-    
-    /* clock_gettime backend: writes struct timespec { time_t sec; long nsec; } */
-    public int mir_sysclock_gettime(int clk, long tsAddr) {
-        // CLOCK_REALTIME approximated via currentTimeMillis. TODO: MONOTONIC via nanoTime
-        long millis = System.currentTimeMillis();
-        long sec = millis / 1000L;
-        long nsec = (millis % 1000L) * 1000000L;
-
-        // struct timespec is 2 x 8 bytes on our target
-        mir_write_long(tsAddr, sec);
-        mir_write_long(tsAddr + 8, nsec);
-        return 0;
-    }
 
     public long memcpy(long destAddr, long srcAddr, long size) {
         System.arraycopy(memory, (int) srcAddr, memory, (int) destAddr, (int) size);
@@ -678,11 +656,6 @@ public class Runtime {
         }
         return addr;
     }
-
-//	public int printf(String string, Object... args) {
-//		System.out.printf(string, args);
-//		return 1;
-//	}
 
     public long strlen(long longAddr) {
         int addr = (int) longAddr;
@@ -710,12 +683,12 @@ public class Runtime {
         return dAddr;
     }
 
-//    public int printf(long addr, Object... args) {
-//        String s = getStringFromMemory(addr);
-//        String convertedFormat = convertPrintfFormat(s);
-//        System.out.printf(convertedFormat, args);
-//        return 1;
-//    }
+    public int printf(long addr, Object... args) {
+        String s = getStringFromMemory(addr);
+        String convertedFormat = convertPrintfFormat(s);
+        System.out.printf(convertedFormat, args);
+        return 1;
+    }
 
     public long fprintf(long id, Object... args) {
         logWarning("fprintf: not implemented yet");
@@ -831,47 +804,6 @@ public class Runtime {
         float f = (float) Math.round(value);
         return f;
     }
-
-//	public long strtol(long stringAddr, long endAddr, int base) {
-//		String s = getStringFromMemory(stringAddr);
-//		long value = Long.parseLong(s, base);
-//		
-//	}
-
-//	static int[] memory = new int[1000000];
-//	
-//	public static int growMemory(int minSize) {
-//		int newSize = memory.length * 2;
-//		while (newSize < minSize) {
-//			newSize = memory.length * 2;
-//		}
-//		int[] newMemory = new int[newSize];
-//		System.arraycopy(memory, 0, newMemory, 0, memory.length);
-//		memory = newMemory;
-//		return newSize;
-//	}
-//	
-//	public static int allocateOnStack(int sizeInBytes) {
-//		int intSize = sizeInBytes >> 2 + 1;
-//		int oldStackPosition = stackPosition;
-//		if ((oldStackPosition + intSize) > memory.length) {
-//			growMemory(oldStackPosition + intSize);
-//		}
-//		stackPosition += intSize;
-//		return oldStackPosition;
-//	}
-//	
-//	public static byte readbyte(int addr) {
-//		int i = memory[addr >> 2];
-//		byte b = (byte) ((i >> (addr % 4)) & 0xFF);
-//		return b;
-//	}
-//	
-//	public static byte writebyte(int addr) {
-//		int i = memory[addr >> 2];
-//		byte b = (byte) ((i >> (addr % 4)) & 0xFF);
-//		return b;
-//	}
 
 }
 
