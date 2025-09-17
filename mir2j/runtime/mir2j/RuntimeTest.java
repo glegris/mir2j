@@ -234,6 +234,8 @@ public class RuntimeTest extends Runtime {
         long ab = mir_set_data_bytes(new byte[] { 'O', 'K', 0 });
         check("set_data_bytes C-string", getStringFromMemory(ab).equals("OK"));
 
+        long ab2 = mir_set_data_ubyte(255);
+        check("set_data_ubyte(255)", mir_read_ubyte(ab2) == 255);
         long aub = mir_set_data_ubytes(new short[] { 0x7F, 0x80, 0xFF });
         check("set_data_ubytes[0]=0x7F", mir_read_ubyte(aub) == 0x7F);
         check("set_data_ubytes[1]=0x80", mir_read_ubyte(aub + 1) == 0x80);

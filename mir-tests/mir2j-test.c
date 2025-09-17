@@ -399,6 +399,96 @@ void test_setjmp() {
   }
 }
 
+/* =========================
+   Unsigned width & shifts
+   ========================= */
+
+/* Return helpers (force exact unsigned types through ABI) */
+static uint8_t  id_u8 (uint8_t  v) { return v; }
+static uint16_t id_u16(uint16_t v) { return v; }
+static uint32_t id_u32(uint32_t v) { return v; }
+
+/* Build address like the emulator: addr = (hi<<8)|lo ; bank = hi>>4 (logical) */
+static int make_addr_bank(uint8_t lo, uint8_t hi, uint16_t *out_addr, uint8_t *out_bank) {
+  uint16_t addr = (uint16_t)(((uint16_t)hi << 8) | (uint16_t)lo);
+  uint8_t  bank = (uint8_t)(hi >> 4); /* unsigned >> must be logical */
+  if (out_addr) *out_addr = addr;
+  if (out_bank) *out_bank = bank;
+  return 1;
+}
+
+/* Deliberately emulate the *buggy* signed-flow to contrast with correct logic:
+   Take hi as if it had been sign-extended and shifted arithmetically, then uext8. */
+static uint8_t mir_like_signed_flow(uint8_t hi) {
+  int i3 = (int8_t)hi;      /* sign-extend to 8-bit signed */
+  i3 = i3 >> 4;             /* arithmetic right shift */
+  return (uint8_t)i3;       /* then "uext8" */
+}
+
+void test_unsigned_width_and_shifts(void) {
+  /* --- u8 param must arrive zero-extended; right shift must be logical --- */
+  uint8_t u8 = 0xFFu;
+  uint8_t got_u8 = id_u8(u8);
+  test_check("u8 #1 param pass-through (0xFF)", got_u8 == 0xFFu);
+
+  /* Correct logical shift on u8 */
+  uint8_t u8_log = (uint8_t)(got_u8 >> 4);        /* must be 0x0F, NOT 0xFF */
+  test_check("u8 #2 logical >> 4 (0xFF -> 0x0F)", u8_log == 0x0Fu);
+
+  /* Buggy path illustration (what happens if sign was propagated) */
+  uint8_t u8_bug = mir_like_signed_flow(0xFFu);   /* will be 0xFF by construction */
+  test_check("u8 #3 (illustrate bug) signed >> then uext8 = 0xFF", u8_bug == 0xFFu);
+
+  /* --- u16 param: zero-extension and shifts --- */
+  uint16_t u16 = 0xF0F0u;
+  uint16_t got_u16 = id_u16(u16);
+  test_check("u16 #1 pass-through", got_u16 == 0xF0F0u);
+
+  /* Logical shift on u16 */
+  uint16_t u16_log = (uint16_t)(got_u16 >> 8);    /* 0xF0F0 >> 8 = 0x00F0 (logical) */
+  test_check("u16 #2 logical >> 8", u16_log == 0x00F0u);
+
+  /* Compose 16-bit address from (hi, lo) and extract bank = hi >> 4 */
+  uint16_t addr; uint8_t bank;
+  make_addr_bank(0xFFu, 0xFFu, &addr, &bank);
+  test_check("addr #1 (0xFF,0xFF) -> 0xFFFF", addr == 0xFFFFu);
+  test_check("bank #1 hi>>4 on 0xFF -> 0x0F",  bank == 0x0Fu);
+
+  /* --- u32 param: ensure it is not sign-extended and compares unsigned --- */
+  uint32_t u32 = 0x80000000u;
+  uint32_t got_u32 = id_u32(u32);
+  test_check("u32 #1 pass-through (0x80000000)", got_u32 == 0x80000000u);
+
+  /* Unsigned arithmetic check akin to your test_arithmetics #7 but explicit */
+  uint32_t u32_add = got_u32 + 50u;
+  /* still >= 0x80000000 as unsigned; as signed it would be negative */
+  test_check("u32 #2 add 50 stays above INT_MAX unsigned", u32_add > 0x7FFFFFFFu);
+
+  /* Logical shift on u32 (top bit must clear) */
+  uint32_t u32_log = (got_u32 >> 1); /* on unsigned it is logical; type is uint32_t here */
+  test_check("u32 #3 logical >> 1 (0x80000000 -> 0x40000000)", u32_log == 0x40000000u);
+}
+
+/* Additional targeted tests: mixing with expressions, masks and branches */
+static int prg_bank_from_hi(uint8_t hi, int prgbits) {
+  /* Emulate: bank = (hi - 8) >> (prgbits - 12); inputs must be treated as unsigned bytes */
+  uint8_t adj = (uint8_t)(hi - 8u);         /* wrap-around in u8 */
+  int shift = prgbits - 12;
+  /* Ensure logical shift in u8 domain, then return as int */
+  return (int)((uint8_t)(adj >> (shift < 0 ? 0 : (shift > 7 ? 7 : shift))));
+}
+
+void test_addressing_patterns(void) {
+  /* For hi=0xFF and prgbits=15, (hi-8)=0xF7, shift=(15-12)=3 => 0xF7 >> 3 = 0x1E */
+  int b1 = prg_bank_from_hi(0xFFu, 15);
+  test_check("PRG bank #1 (hi=0xFF, prgbits=15)", b1 == 0x1E);
+
+  /* Cross-check that logical nature matters: signed-flow would give different paths */
+  uint8_t signed_flow = mir_like_signed_flow(0xFFu); /* 0xFF: wrong bank high nibble */
+  test_check("PRG bank #2 (illustrate bug on hi=0xFF)", signed_flow == 0xFFu);
+}
+
+
 /*=========================
          Sieve  
   ========================*/
@@ -581,6 +671,113 @@ void test_matrix() {
   freematrix (SIZE, mm);
 }
 
+#ifdef TEST_STDIO
+
+#include <string.h>
+
+static void test_stdio(void) {
+  const char *path = "iotest.tmp";
+  const char *payload = "Hello\nWorld\n"; /* 12 bytes */
+  char buf[128];
+
+  /* 1) fopen write (w+), fwrite, ftell */
+  FILE *f = fopen(path, "w+");
+  test_check("stdio #1 fopen(w+)", f != NULL);
+
+  size_t nw = fwrite(payload, 1, (int)strlen(payload), f);
+  test_check("stdio #2 fwrite size", nw == strlen(payload));
+
+  long pos = ftell(f);
+  test_check("stdio #3 ftell after write", pos == (long)strlen(payload));
+
+  /* 2) fseek to start, fread first 5 bytes ("Hello"), then fgetc('\n') */
+  test_check("stdio #4 fseek(SET,0)", fseek(f, 0, SEEK_SET) == 0);
+
+  memset(buf, 0, sizeof(buf));
+  size_t nr = fread(buf, 1, 5, f);
+  test_check("stdio #5 fread 5", nr == 5);
+  test_check("stdio #6 fread content", memcmp(buf, "Hello", 5) == 0);
+
+  int c = fgetc(f);
+  test_check("stdio #7 fgetc newline", c == '\n');
+
+  /* 3) fgets reads "World\n" */
+  memset(buf, 0, sizeof(buf));
+  char *s = fgets(buf, (int)sizeof(buf), f);
+  test_check("stdio #8 fgets non-NULL", s != NULL);
+  test_check("stdio #9 fgets content", strcmp(buf, "World\n") == 0);
+
+  /* 4) EOF behavior */
+  c = fgetc(f);
+  test_check("stdio #10 fgetc EOF", c == EOF);
+  test_check("stdio #11 feof", feof(f) != 0);
+
+  /* 5) fflush (no-op in our backend, should still return 0) */
+  test_check("stdio #12 fflush", fflush(f) == 0);
+
+  /* 6) remember size, freopen append, fputc('!'), verify size+1 */
+  long len_before = ftell(f);
+  test_check("stdio #13 len_before valid", len_before >= 0);
+
+  test_check("stdio #14 freopen(a+)", freopen(path, "a+", f) == f);
+  test_check("stdio #15 fputc('!')", fputc('!', f) == '!');
+
+  test_check("stdio #16 fseek(END,0)", fseek(f, 0, SEEK_END) == 0);
+  long len_after = ftell(f);
+  test_check("stdio #17 size grew +1", len_after == len_before + 1);
+
+  /* 7) rewind and count bytes via fgets loop */
+  test_check("stdio #18 rewind", fseek(f, 0, SEEK_SET) == 0);
+  memset(buf, 0, sizeof(buf));
+  size_t total = 0;
+  while (fgets(buf, (int)sizeof(buf), f)) {
+    total += strlen(buf);
+  }
+  test_check("stdio #19 read-all size", total == (size_t)len_after);
+
+  /* 8) print to stdout using fputs + fputc('\n') */
+  test_check("stdio #20 fputs(stdout)", fputs("STDIO OK\n", stdout) >= 0);
+  test_check("stdio #21 fputc('\\n',stdout)", fputc('\n', stdout) == '\n');
+
+  test_check("stdio #22 fclose", fclose(f) == 0);
+
+  /* 9) reopen read-only and verify trailing '!' */
+  f = fopen(path, "r");
+  test_check("stdio #23 reopen r", f != NULL);
+  memset(buf, 0, sizeof(buf));
+  nr = fread(buf, 1, sizeof(buf) - 1, f);
+  test_check("stdio #24 final size", nr == (size_t)len_after);
+  test_check("stdio #25 trailing '!'", buf[len_after - 1] == '!');
+  test_check("stdio #26 fclose final", fclose(f) == 0);
+  
+  /* 10) puts/putchar tests to stdout */
+  /* puts returns a non-negative value on success and prints the string + newline */
+  int prc = puts("puts-OK");
+  test_check("stdio #27 puts stdout", prc >= 0);
+
+  /* putchar echoes a single character and returns it as unsigned char cast to int */
+  int pcrc = putchar('Z');
+  test_check("stdio #28 putchar stdout", pcrc == 'Z');
+  /* newline after Z so output stays tidy */
+  test_check("stdio #29 putchar newline", putchar('\n') == '\n');
+
+  /* 11) getc tests: read the file char-by-char and check we hit EOF at the end */
+  f = fopen(path, "r");
+  test_check("stdio #30 reopen r (getc loop)", f != NULL);
+
+  long count_bytes = 0;
+  while ((c = getc(f)) != EOF) {
+    count_bytes++;
+  }
+  /* We wrote payload (12) + '!' (1) = 13 bytes total in the file */
+  test_check("stdio #31 getc loop counted bytes", count_bytes == 13);
+  test_check("stdio #32 getc loop EOF", feof(f) != 0);
+
+  test_check("stdio #33 fclose getc file", fclose(f) == 0);
+}
+
+#endif /* TEST_STDIO */
+
 int main (int argc, char *argv[]) {
   
   if (argc > 0) {
@@ -602,12 +799,18 @@ int main (int argc, char *argv[]) {
   test_aggregates_sret();
   test_switch();
   test_varargs();
+  test_unsigned_width_and_shifts();
+  test_addressing_patterns();
   test_setjmp();
+
   
   //test_sieve();
   test_arrays();
   test_heapsort();
   test_matrix();
+#ifdef TEST_STDIO
+  test_stdio();
+#endif
 
   return 0;
 }
